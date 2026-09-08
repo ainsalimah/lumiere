@@ -1,9 +1,8 @@
 node_modules/
 dist/
 build/
+.next/
 .cache/
-.vite/
-vite.config.*.timestamp-*
 *.tsbuildinfo
 *-debug.log*
 logs/
@@ -11,11 +10,12 @@ logs/
 .claude-replay.*
 .tmp-*
 
+# Next.js
+next-env.d.ts
+
 # Environment variables
 .env
 .env.local
 .env.*.local
-server/.env
-server/.env.local
 !.env.example
-!server/.env.example
+!.env.local.example
