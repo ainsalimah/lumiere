@@ -72,6 +72,10 @@ export interface Order {
   method: string
   items: number
   itemDetails?: OrderItem[]
+  offerShipping?: number | null
+  offerDelivery?: string | null
+  offerNote?: string | null
+  offerSentAt?: string | null
 }
 
 // ── Address ───────────────────────────────────────────────────────────────────

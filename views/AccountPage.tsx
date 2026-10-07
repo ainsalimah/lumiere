@@ -145,6 +145,7 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
   const [invoiceOrder, setInvoiceOrder]   = useState<any | null>(null)
   const [cancelTarget, setCancelTarget]   = useState<any | null>(null)
   const [cancelling, setCancelling]       = useState(false)
+  const [respondingOffer, setRespondingOffer] = useState<string | null>(null)
 
   const fetchOrders = () => {
     if (!currentUser?.id) return
@@ -183,6 +184,19 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
     } finally {
       setCancelling(false)
     }
+  }
+
+  const respondToOffer = async (order: any, accept: boolean) => {
+    setRespondingOffer(order.id)
+    try {
+      const token = localStorage.getItem('lumiere_token') || ''
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.id)}/offer-response`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ accept }) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Respons penawaran belum tersimpan.')
+      setOrders(prev => prev.map(item => item.id === order.id ? { ...item, status: accept ? 'Processing' : 'Cancelled' } : item))
+      toast.success(accept ? 'Penawaran disetujui. Pesanan akan segera diproses.' : 'Penawaran ditolak. Pesanan dibatalkan.')
+    } catch (error: any) { toast.error(error.message || 'Respons penawaran belum tersimpan.') }
+    finally { setRespondingOffer(null) }
   }
 
   const filtered = filter === 'All' ? orders : orders.filter(o => o.status === filter)
@@ -306,12 +320,14 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
               </div>
 
               {/* Items */}
-              <div className="divide-y divide-stone-100">
+               <div className="divide-y divide-stone-100">
                 {order.items.map(({ product, qty, color }: any, idx: number) => (
                   <div key={product?.id || idx} className="flex items-center gap-4 px-5 py-3">
                     <div className="w-12 h-12 bg-stone-100 rounded-lg overflow-hidden flex-shrink-0">
                       <img src={product?.img || ''} alt={product?.name || 'Product'} className="w-full h-full object-cover" />
-                    </div>
+               </div>
+
+               {order.status === 'Accepted' && order.offerSentAt && <div className="mx-4 sm:mx-5 my-4 rounded-xl border border-[#ded3c5] bg-[#f0eae3] p-4"><p className="text-xs font-semibold tracking-wide text-[#765037]">PENAWARAN PEMILIK</p><div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm"><span>Ongkir: <strong>Rp {(order.offerShipping || 0).toLocaleString('id-ID')}</strong></span><span>Estimasi: <strong>{order.offerDelivery}</strong></span></div>{order.offerNote && <p className="mt-2 text-sm leading-6 text-[#7d7168]">{order.offerNote}</p>}<p className="mt-3 text-xs text-[#7d7168]">Total penawaran: <strong className="text-[#2c2824]">Rp {(order.total + (order.offerShipping || 0)).toLocaleString('id-ID')}</strong></p><div className="mt-4 flex flex-wrap gap-2"><button disabled={respondingOffer === order.id} onClick={() => respondToOffer(order, true)} className="store-button min-h-10 px-4 text-xs">{respondingOffer === order.id ? 'Menyimpan…' : 'Setujui penawaran'}</button><button disabled={respondingOffer === order.id} onClick={() => respondToOffer(order, false)} className="store-button secondary min-h-10 px-4 text-xs">Tolak</button></div></div>}
                     <div>
                       <p className="text-stone-900 text-sm font-medium">{product?.name || 'Product'}</p>
                       <p className="text-stone-400 text-xs">Color: {color} | Qty: {qty}</p>

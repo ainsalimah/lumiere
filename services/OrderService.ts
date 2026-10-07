@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { productPrice, PAYMENT_METHOD } from '@/lib/store'
-import { DEFAULT_PRODUCT_COLOR } from '@/constants'
 import { randomUUID } from 'crypto'
+
+const DEFAULT_PRODUCT_COLOR = 'Sesuai foto'
 
 export interface CreateOrderDTO {
   userId?: number | null
@@ -32,6 +33,10 @@ function formatOrderForAdmin(o: any) {
     createdAt: o.date.toISOString(),
     phone: o.user?.phone || '',
     method: o.paymentMethod,
+    offerShipping: o.offerShipping,
+    offerDelivery: o.offerDelivery,
+    offerNote: o.offerNote,
+    offerSentAt: o.offerSentAt?.toISOString() || null,
     items: o.items.reduce((sum: number, item: any) => sum + item.qty, 0),
     itemDetails: o.items.map((i: any) => ({
       productName: i.product?.name ?? 'Unknown Product',
@@ -51,6 +56,10 @@ function formatOrderForUser(o: any) {
     status: o.status,
     date: o.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     method: o.paymentMethod,
+    offerShipping: o.offerShipping,
+    offerDelivery: o.offerDelivery,
+    offerNote: o.offerNote,
+    offerSentAt: o.offerSentAt?.toISOString() || null,
     items: o.items.map((item: any) => ({
       product: item.product,
       qty: item.qty,
@@ -162,6 +171,19 @@ export class OrderService {
     const transitions: Record<string, string[]> = { Accepted: ['Processing', 'Cancelled'], Processing: ['On the Way', 'Cancelled'], 'On the Way': ['Delivered'], Delivered: [], Cancelled: [] }
     if (status !== order.status && !transitions[order.status]?.includes(status)) throw Object.assign(new Error('Perubahan status tidak sesuai alur pesanan. Konfirmasi lalu proses dan kirim secara berurutan.'), { status: 400 })
     return prisma.order.update({ where: { id: orderId }, data: { status } })
+  }
+  async createOffer(orderId: string, data: { shipping: number; delivery: string; note?: string }) {
+    const order = await prisma.order.findUnique({ where: { id: orderId } })
+    if (!order) throw Object.assign(new Error('Pesanan tidak ditemukan.'), { status: 404 })
+    if (order.status !== 'Accepted') throw Object.assign(new Error('Penawaran hanya dapat dibuat untuk pesanan yang menunggu konfirmasi.'), { status: 400 })
+    return prisma.order.update({ where: { id: orderId }, data: { offerShipping: data.shipping, offerDelivery: data.delivery, offerNote: data.note || null, offerSentAt: new Date() } })
+  }
+  async respondToOffer(orderId: string, userId: number, accept: boolean) {
+    const order = await prisma.order.findUnique({ where: { id: orderId } })
+    if (!order) throw Object.assign(new Error('Pesanan tidak ditemukan.'), { status: 404 })
+    if (order.userId !== userId) throw Object.assign(new Error('Kamu tidak berwenang mengubah pesanan ini.'), { status: 403 })
+    if (order.status !== 'Accepted' || !order.offerSentAt) throw Object.assign(new Error('Penawaran belum tersedia atau sudah ditanggapi.'), { status: 400 })
+    return prisma.order.update({ where: { id: orderId }, data: { status: accept ? 'Processing' : 'Cancelled' } })
   }
 }
 

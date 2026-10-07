@@ -52,6 +52,12 @@ export const updateOrderStatusSchema = z.object({
   status: z.enum(['Accepted', 'Processing', 'On the Way', 'Delivered', 'Cancelled']),
 })
 
+export const orderOfferSchema = z.object({
+  shipping: z.coerce.number().int().min(0).max(2147483647),
+  delivery: z.string().trim().min(3).max(160),
+  note: z.string().trim().max(1000).optional().default(''),
+})
+
 export const addressSchema = z.object({
   name: z.string().min(2, 'Recipient name is required'),
   phone: z.string().min(5, 'Valid phone number is required'),

@@ -113,5 +113,9 @@ export const apiClient = {
 
     cancel: (orderId: string) =>
       put<{ message: string }>(`/orders/${encodeURIComponent(orderId)}/cancel`, {}),
+    createOffer: (orderId: string, data: { shipping: number; delivery: string; note?: string }) =>
+      put<Order>(`/orders/${encodeURIComponent(orderId)}/offer`, data),
+    respondToOffer: (orderId: string, accept: boolean) =>
+      put<Order>(`/orders/${encodeURIComponent(orderId)}/offer-response`, { accept }),
   },
 }

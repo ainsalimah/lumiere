@@ -54,6 +54,10 @@ model Order {
   total         Int
   status        String      // Accepted, Processing, Delivered, Cancelled
   paymentMethod String
+  offerShipping Int?
+  offerDelivery String?
+  offerNote     String?
+  offerSentAt   DateTime?
   date          DateTime    @default(now())
   items         OrderItem[]
 }
