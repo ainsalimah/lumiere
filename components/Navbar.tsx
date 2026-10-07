@@ -1,10 +1,12 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import type { Page, ShopPreFilter } from '@/types'
 import type { AuthUser, Product } from '@/types'
 import { ProductsContext } from '@/context'
 import { useContext } from 'react'
+import LogoutConfirmModal from '@/components/LogoutConfirmModal'
+import { formatCategory, formatRoom, formatSubcategory, formatColor } from '@/constants'
 
 interface NavbarProps {
   currentPage: Page
@@ -18,11 +20,11 @@ interface NavbarProps {
 }
 
 const navLinks: { label: string; page: Page }[] = [
-  { label: 'Home', page: 'home' },
-  { label: 'Shop', page: 'shop' },
-  { label: 'Categories', page: 'categories' },
-  { label: 'About Us', page: 'about' },
-  { label: 'Contact', page: 'contact' },
+  { label: 'Beranda', page: 'home' },
+  { label: 'Toko', page: 'shop' },
+  { label: 'Kategori', page: 'categories' },
+  { label: 'Tentang Kami', page: 'about' },
+  { label: 'Kontak', page: 'contact' },
 ]
 
 export default function Navbar({
@@ -31,6 +33,7 @@ export default function Navbar({
   const products = useContext(ProductsContext)
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [query, setQuery] = useState('')
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
@@ -50,13 +53,19 @@ export default function Navbar({
   const searchTerms = query.toLowerCase().trim().split(/\s+/).filter(Boolean)
   const results = searchTerms.length > 0
     ? products.filter(p => {
+        if (!p.inStock) return false
+
         const searchableText = [
           p.name,
           p.category,
+          formatCategory(p.category),
           p.subcategory || '',
+          formatSubcategory(p.subcategory),
           p.material || '',
           p.room || '',
+          formatRoom(p.room),
           ...(p.colors || []),
+          ...(p.colors || []).map(c => formatColor(c)),
         ].join(' ').toLowerCase()
 
         // Every keyword typed by the user must match somewhere in the product
@@ -128,8 +137,8 @@ export default function Navbar({
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-stone-50/95 backdrop-blur-sm border-b border-stone-200">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-[#f8f6f1]/95 backdrop-blur-sm border-b border-[#dddcd1]">
+        <div className="store-container h-[76px] flex items-center justify-between">
           {/* Logo */}
           <button onClick={() => navigate('home')} className="flex items-center gap-2">
             <div className="w-7 h-7 bg-stone-900 rounded-sm flex items-center justify-center">
@@ -142,19 +151,25 @@ export default function Navbar({
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map(({ label, page }) => (
-              <button
-                key={page}
-                onClick={() => navigate(page)}
-                className={`text-sm tracking-wide transition-colors duration-200 pb-0.5 ${
-                  currentPage === page
-                    ? 'text-stone-900 border-b border-stone-900'
-                    : 'text-stone-500 hover:text-stone-900'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            {navLinks.map(({ label, page }) => {
+              const isActive = currentPage === page
+              return (
+                <button
+                  key={page}
+                  onClick={() => navigate(page)}
+                  className={`relative text-sm tracking-wide transition-colors duration-200 py-1 ${
+                    isActive
+                      ? 'text-stone-900 font-semibold'
+                      : 'text-stone-500 hover:text-stone-900 font-medium'
+                  }`}
+                >
+                  {label}
+                  {isActive && (
+                    <span className="absolute -bottom-1 left-0 right-0 h-[2px] bg-stone-900 rounded-full" />
+                  )}
+                </button>
+              )
+            })}
           </nav>
 
           {/* Right icons */}
@@ -187,13 +202,13 @@ export default function Navbar({
             ) : (
               <button
                 onClick={() => navigate('login')}
-                className="hidden md:flex items-center gap-2 text-sm text-stone-600 hover:text-stone-900 transition-colors border border-stone-300 hover:border-stone-500 rounded-lg px-3.5 py-1.5 font-medium"
-                aria-label="Sign In"
+                className="hidden md:flex text-stone-500 hover:text-stone-900 transition-colors p-1"
+                aria-label="Masuk ke Akun"
+                title="Masuk ke Akun"
               >
-                <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                 </svg>
-                Sign In
               </button>
             )}
 
@@ -216,8 +231,8 @@ export default function Navbar({
             {/* Cart */}
             <button
               onClick={onCartOpen}
-              className="relative text-stone-500 hover:text-stone-900 transition-colors p-1"
-              aria-label="Open cart"
+              className="relative text-stone-500 hover:text-stone-900 transition-colors p-1 cursor-pointer"
+              aria-label="Keranjang Belanja"
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                 <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -257,19 +272,27 @@ export default function Navbar({
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" /><path d="m21 21-4-4" />
               </svg>
-              Search products…
+              Cari produk…
             </button>
-            {navLinks.map(({ label, page }) => (
-              <button
-                key={page}
-                onClick={() => { navigate(page); setMenuOpen(false) }}
-                className={`text-left text-sm tracking-wide py-1 ${
-                  currentPage === page ? 'text-stone-900 font-medium' : 'text-stone-500'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            {navLinks.map(({ label, page }) => {
+              const isActive = currentPage === page
+              return (
+                <button
+                  key={page}
+                  onClick={() => { navigate(page); setMenuOpen(false) }}
+                  className={`text-left text-sm tracking-wide px-3.5 py-2.5 rounded-lg transition-all duration-200 flex items-center justify-between ${
+                    isActive
+                      ? 'bg-stone-900 text-white font-semibold shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100 font-medium'
+                  }`}
+                >
+                  <span>{label}</span>
+                  {isActive && (
+                    <span className="w-2 h-2 rounded-full bg-warm-400" />
+                  )}
+                </button>
+              )
+            })}
             <div className="border-t border-stone-200 pt-3">
               {currentUser ? (
                 <div className="flex items-center justify-between">
@@ -279,8 +302,8 @@ export default function Navbar({
                     </div>
                     <span className="text-stone-700 text-sm font-medium">{currentUser.name.split(' ')[0]}</span>
                   </div>
-                  <button onClick={() => { onLogout(); setMenuOpen(false) }} className="text-xs text-red-500 font-medium">
-                    Sign Out
+                  <button onClick={() => { setShowLogoutConfirm(true); setMenuOpen(false) }} className="text-xs text-red-500 font-medium">
+                    Keluar
                   </button>
                 </div>
               ) : (
@@ -288,7 +311,7 @@ export default function Navbar({
                   onClick={() => { navigate('login'); setMenuOpen(false) }}
                   className="w-full bg-stone-900 text-white py-2.5 rounded-lg text-sm font-medium"
                 >
-                  Sign In / Create Account
+                  Masuk / Buat Akun
                 </button>
               )}
             </div>
@@ -313,7 +336,7 @@ export default function Navbar({
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search products, categories, materials (e.g. Sofa, Oak, Chair)..."
+                placeholder="Cari produk, kategori, material (contoh: Sofa, Jati, Kursi)..."
                 className="flex-1 text-stone-900 text-sm sm:text-base outline-none placeholder:text-stone-400 bg-transparent min-w-0"
               />
 
@@ -338,7 +361,7 @@ export default function Navbar({
                 aria-label="Close search"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs sm:text-sm transition-all shadow-xs flex-shrink-0 cursor-pointer"
               >
-                <span>Close</span>
+                <span>Tutup</span>
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path d="M18 6 6 18M6 6l12 12"/>
                 </svg>
@@ -355,23 +378,23 @@ export default function Navbar({
                         <circle cx="11" cy="11" r="7" /><path d="m21 21-4-4" />
                       </svg>
                     </div>
-                    <p className="text-stone-800 font-medium text-base mb-1">No products found</p>
+                    <p className="text-stone-800 font-medium text-base mb-1">Produk tidak ditemukan</p>
                     <p className="text-stone-500 text-xs sm:text-sm">
-                      We couldn't find matches for "<span className="font-semibold text-stone-700">{query}</span>". Try searching by category like <button type="button" onClick={() => setQuery('Sofa')} className="text-warm-600 underline font-medium">Sofa</button>, <button type="button" onClick={() => setQuery('Chair')} className="text-warm-600 underline font-medium">Chair</button>, or <button type="button" onClick={() => setQuery('Table')} className="text-warm-600 underline font-medium">Table</button>.
+                      Tidak ada hasil untuk "<span className="font-semibold text-stone-700">{query}</span>". Coba cari berdasarkan kategori seperti <button type="button" onClick={() => setQuery('Sofa')} className="text-warm-600 underline font-medium">Sofa</button>, <button type="button" onClick={() => setQuery('Chair')} className="text-warm-600 underline font-medium">Kursi</button>, atau <button type="button" onClick={() => setQuery('Table')} className="text-warm-600 underline font-medium">Meja</button>.
                     </p>
                   </div>
                 ) : (
                   <>
                     <div className="px-5 py-3 bg-stone-50/70 border-b border-stone-100 flex items-center justify-between">
                       <p className="text-xs text-stone-500 font-medium uppercase tracking-wider">
-                        {results.length} product{results.length !== 1 ? 's' : ''} found
+                        {results.length} produk ditemukan
                       </p>
                       <button
                         type="button"
                         onClick={() => { saveRecentSearch(query); closeSearch(); navigate('shop'); }}
                         className="text-xs text-warm-600 hover:text-warm-700 font-medium transition-colors"
                       >
-                        View all in Shop →
+                        Lihat semua di Toko →
                       </button>
                     </div>
                     <div className="overflow-y-auto divide-y divide-stone-100">
@@ -390,14 +413,14 @@ export default function Navbar({
                             </p>
                             <div className="flex items-center gap-2 mt-0.5 text-xs text-stone-500">
                               <span className="bg-stone-100 px-2 py-0.5 rounded text-[11px] font-medium text-stone-600">
-                                {product.category}
+                                {formatCategory(product.category)}
                               </span>
                               <span>•</span>
                               <span>{product.material}</span>
                               {product.room && (
                                 <>
                                   <span>•</span>
-                                  <span>{product.room}</span>
+                                  <span>{formatRoom(product.room)}</span>
                                 </>
                               )}
                             </div>
@@ -421,7 +444,7 @@ export default function Navbar({
                         onClick={() => { saveRecentSearch(query); closeSearch(); navigate('shop'); }}
                         className="text-xs sm:text-sm font-semibold text-stone-700 hover:text-stone-950 transition-colors inline-flex items-center gap-1.5"
                       >
-                        <span>Explore full catalogue in Shop</span>
+                        <span>Jelajahi katalog lengkap di Toko</span>
                         <span>→</span>
                       </button>
                     </div>
@@ -441,14 +464,14 @@ export default function Navbar({
                         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                         </svg>
-                        <span>Recent Searches</span>
+                        <span>Pencarian Terbaru</span>
                       </div>
                       <button
                         type="button"
                         onClick={clearAllRecentSearches}
                         className="text-xs text-stone-400 hover:text-red-500 transition-colors"
                       >
-                        Clear history
+                        Hapus riwayat
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -484,15 +507,15 @@ export default function Navbar({
                     <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                     </svg>
-                    <span>Popular Searches</span>
+                    <span>Pencarian Populer</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {[
                       'Sofa',
-                      'Chair',
-                      'Dining Table',
-                      'Living Room',
-                      'Solid Wood',
+                      'Kursi',
+                      'Meja Makan',
+                      'Ruang Tamu',
+                      'Kayu Solid',
                       'Oak',
                       'Walnut',
                       'Velvet',
@@ -513,6 +536,13 @@ export default function Navbar({
           </div>
         </div>
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={onLogout}
+      />
     </>
   )
 }

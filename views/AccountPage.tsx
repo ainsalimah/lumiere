@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import type { AuthUser, Page } from '@/types'
@@ -7,6 +7,8 @@ import ReviewModal from '@/components/ReviewModal'
 import InvoiceModal from '@/components/InvoiceModal'
 import { useToast } from '@/context/ToastContext'
 import { OrderCardSkeleton } from '@/components/Skeleton'
+import LogoutConfirmModal from '@/components/LogoutConfirmModal'
+import { ORDER_LABELS } from '@/lib/store'
 
 interface AccountPageProps {
   currentUser: AuthUser | null
@@ -15,7 +17,7 @@ interface AccountPageProps {
   onUpdateUser?: (updated: AuthUser) => void
 }
 
-type Tab = 'personal' | 'orders' | 'address' | 'payment' | 'password'
+type Tab = 'personal' | 'orders' | 'address' | 'password'
 
 const STATUS_STYLE: Record<string, string> = {
   Accepted: 'text-warm-600 border-warm-400',
@@ -28,7 +30,6 @@ const SIDEBAR_ITEMS: { key: Tab | 'logout'; label: string; icon: string }[] = [
   { key: 'personal', label: 'Personal Information', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
   { key: 'orders',   label: 'My Orders',            icon: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2' },
   { key: 'address',  label: 'Manage Address',       icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0' },
-  { key: 'payment',  label: 'Payment Method',       icon: 'M1 4h22v16H1zM1 9h22' },
   { key: 'password', label: 'Password Manager',     icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
   { key: 'logout',   label: 'Logout',               icon: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9' },
 ]
@@ -125,7 +126,7 @@ function PersonalTab({ user, onUpdateUser }: { user: AuthUser | null; onUpdateUs
         </div>
         {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>}
         <button type="submit" disabled={saving}
-          className={`px-8 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all ${saved ? 'bg-green-600 text-white' : saving ? 'bg-stone-400 text-white cursor-wait' : 'bg-stone-900 text-white hover:bg-stone-800'}`}>
+          className={`px-8 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all ${saved ? 'bg-stone-800 text-white' : saving ? 'bg-stone-400 text-white cursor-wait' : 'bg-stone-900 text-white hover:bg-stone-800'}`}>
           {saved ? '✓ Changes Saved' : saving ? 'Saving…' : 'Update Changes'}
         </button>
       </form>
@@ -285,17 +286,17 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
           {filtered.map(order => (
             <div key={order.id} className="border border-stone-200 rounded-xl overflow-hidden bg-white">
               {/* Order header */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-warm-400/20 border-b border-warm-400/30 px-5 py-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 bg-warm-400/20 border-b border-warm-400/30 px-4 sm:px-5 py-3 sm:py-4">
                 <div>
                   <p className="text-stone-500 text-xs mb-0.5">Order ID</p>
                   <p className="text-stone-900 font-semibold text-sm">{order.id}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500 text-xs mb-0.5">Total Payment</p>
+                  <p className="text-stone-600 text-xs mb-0.5">Nilai barang</p>
                   <p className="text-stone-900 font-semibold text-sm">Rp {order.total.toLocaleString('id-ID')}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500 text-xs mb-0.5">Payment Method</p>
+                  <p className="text-stone-600 text-xs mb-0.5">Cara pemesanan</p>
                   <p className="text-stone-900 font-semibold text-sm">{order.method}</p>
                 </div>
                 <div>
@@ -320,10 +321,10 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
               </div>
 
               {/* Footer */}
-              <div className="px-5 py-4 border-t border-stone-100 flex items-center justify-between flex-wrap gap-3">
+              <div className="px-4 sm:px-5 py-3 sm:py-4 border-t border-stone-100 flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-medium border px-3 py-1 rounded-full ${STATUS_STYLE[order.status] ?? 'text-stone-600 border-stone-300'}`}>
-                    {order.status}
+                    {ORDER_LABELS[order.status] || order.status}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -356,7 +357,9 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
   )
 }
 
-// ── Address Tab ────────────────────────────────────────────────────────────────
+import { PROVINCE_CITY_MAP, parseShopeeAddress, formatShopeeStreet, formatShopeeCity } from '@/lib/indonesiaRegions'
+
+// ── Address Tab (Shopee Style) ────────────────────────────────────────────────
 export type SavedAddress = {
   id: number
   name: string
@@ -368,14 +371,57 @@ export type SavedAddress = {
   isDefault?: boolean
 }
 
-function AddressTab({ userId }: { userId?: number }) {
+function AddressTab({ user }: { user: AuthUser | null }) {
+  const userId = user?.id
   const storageKey = `addresses_${userId ?? 'guest'}`
   const [addresses, setAddresses] = useState<SavedAddress[]>([])
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [form, setForm] = useState({ name: '', phone: '', street: '', city: '', zip: '', country: 'Indonesia' })
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  const [form, setForm] = useState({
+    name: user?.name || '',
+    phone: user?.phone || '',
+    label: 'Rumah' as 'Rumah' | 'Kantor',
+    province: 'Jawa Barat',
+    city: 'Kota Bandung',
+    district: '',
+    street: '',
+    notes: '',
+    zip: '',
+    isDefault: false
+  })
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+
+  const resetForm = () => {
+    setForm({
+      name: user?.name || '',
+      phone: user?.phone || '',
+      label: 'Rumah',
+      province: 'Jawa Barat',
+      city: 'Kota Bandung',
+      district: '',
+      street: '',
+      notes: '',
+      zip: '',
+      isDefault: addresses.length === 0
+    })
+    setEditingId(null)
+    setShowAddForm(false)
+    setError('')
+  }
+
+  // Auto-sync name and phone from user's personal information when not editing
+  useEffect(() => {
+    if (editingId === null && !showAddForm) {
+      setForm(prev => ({
+        ...prev,
+        name: prev.name || user?.name || '',
+        phone: prev.phone || user?.phone || ''
+      }))
+    }
+  }, [user, editingId, showAddForm])
 
   // Load addresses from DB (with localStorage fallback)
   useEffect(() => {
@@ -406,54 +452,92 @@ function AddressTab({ userId }: { userId?: number }) {
     setError('')
     const token = localStorage.getItem('lumiere_token') || ''
 
+    if (!form.name.trim()) return setError('Nama penerima wajib diisi.')
+    if (!form.phone.trim()) return setError('Nomor telepon wajib diisi.')
+    if (!form.street.trim()) return setError('Nama jalan / alamat lengkap wajib diisi.')
+    if (!form.district.trim()) return setError('Kecamatan wajib diisi.')
+    if (!form.zip.trim()) return setError('Kode pos wajib diisi.')
+
+    // Format street with optional notes and label (Shopee style)
+    const formattedStreet = formatShopeeStreet(form.street, form.notes, form.label)
+    // Format city: "Kecamatan, Kota/Kabupaten, Provinsi"
+    const formattedCity = formatShopeeCity(form.district, form.city, form.province)
+
+    const payload = {
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      street: formattedStreet,
+      city: formattedCity,
+      zip: form.zip.trim(),
+      country: 'Indonesia',
+      isDefault: form.isDefault || addresses.length === 0
+    }
+
     if (userId) {
       try {
         if (editingId !== null) {
           const res = await fetch(`/api/users/${userId}/addresses/${editingId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(form)
+            body: JSON.stringify(payload)
           })
-          if (!res.ok) throw new Error('Failed to update address')
+          if (!res.ok) throw new Error('Gagal memperbarui alamat.')
           const updated = await res.json()
           setAddresses(prev => prev.map(a => a.id === editingId ? updated : a))
-          setEditingId(null)
+          resetForm()
         } else {
           const res = await fetch(`/api/users/${userId}/addresses`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(form)
+            body: JSON.stringify(payload)
           })
-          if (!res.ok) throw new Error('Failed to save address')
+          if (!res.ok) throw new Error('Gagal menyimpan alamat.')
           const created = await res.json()
           setAddresses(prev => [created, ...prev])
+          resetForm()
         }
       } catch (err: any) {
-        setError(err.message || 'Failed to save address.')
+        setError(err.message || 'Gagal menyimpan alamat.')
+        return
       }
     } else {
       // Local fallback for guest
       if (editingId !== null) {
-        const updated = addresses.map(a => a.id === editingId ? { ...a, ...form } : a)
+        const updated = addresses.map(a => a.id === editingId ? { ...a, ...payload } : a)
         setAddresses(updated)
         localStorage.setItem(storageKey, JSON.stringify(updated))
-        setEditingId(null)
+        resetForm()
       } else {
-        const newAddr: SavedAddress = { id: Date.now(), ...form }
+        const newAddr: SavedAddress = { id: Date.now(), ...payload }
         const updated = [...addresses, newAddr]
         setAddresses(updated)
         localStorage.setItem(storageKey, JSON.stringify(updated))
+        resetForm()
       }
     }
 
-    setForm({ name: '', phone: '', street: '', city: '', zip: '', country: 'Indonesia' })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
   const startEdit = (addr: SavedAddress) => {
     setEditingId(addr.id)
-    setForm({ name: addr.name, phone: addr.phone, street: addr.street, city: addr.city, zip: addr.zip, country: addr.country })
+    setShowAddForm(true)
+
+    const parsed = parseShopeeAddress(addr.street, addr.city)
+
+    setForm({
+      name: addr.name,
+      phone: addr.phone,
+      label: parsed.label,
+      province: parsed.province,
+      city: parsed.city,
+      district: parsed.district,
+      street: parsed.cleanStreet,
+      notes: parsed.notes,
+      zip: addr.zip,
+      isDefault: !!addr.isDefault
+    })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -488,126 +572,315 @@ function AddressTab({ userId }: { userId?: number }) {
     localStorage.setItem(storageKey, JSON.stringify(updated))
   }
 
-  const inp = "w-full border border-stone-200 text-stone-900 text-sm px-4 py-3 rounded-lg focus:outline-none focus:border-stone-500 bg-stone-50"
+  const inp = "w-full border border-stone-200 text-stone-900 text-sm px-4 py-2.5 rounded-xl focus:outline-none focus:border-stone-500 bg-white"
 
   return (
     <div>
-      <h2 className="text-stone-900 text-2xl mb-8" style={{ fontFamily: 'var(--font-display)' }}>Manage Address</h2>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h2 className="text-stone-900 text-2xl" style={{ fontFamily: 'var(--font-display)' }}>Buku Alamat</h2>
+          <p className="text-xs text-stone-500 mt-1">Kelola alamat pengiriman pesanan Anda (gaya Shopee)</p>
+        </div>
+        {!showAddForm && (
+          <button
+            type="button"
+            onClick={() => {
+              setForm({
+                name: user?.name || '',
+                phone: user?.phone || '',
+                label: 'Rumah',
+                province: 'Jawa Barat',
+                city: 'Kota Bandung',
+                district: '',
+                street: '',
+                notes: '',
+                zip: '',
+                isDefault: addresses.length === 0
+              })
+              setEditingId(null)
+              setShowAddForm(true)
+            }}
+            className="flex items-center gap-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer"
+          >
+            <span>+</span>
+            <span>Tambah Alamat Baru</span>
+          </button>
+        )}
+      </div>
 
       {/* Loading state */}
-      {loading && <p className="text-stone-400 text-sm mb-4">Loading saved addresses…</p>}
+      {loading && <p className="text-stone-400 text-sm mb-4">Memuat daftar alamat tersimpan…</p>}
 
-      {/* Saved addresses */}
+      {/* Shopee-style Address Cards List */}
       {addresses.length > 0 && (
-        <div className="space-y-3 mb-8">
-          {addresses.map(addr => (
-            <div key={addr.id} className={`flex items-start justify-between border rounded-xl px-5 py-4 bg-white ${addr.isDefault ? 'border-warm-400' : 'border-stone-200'}`}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-stone-900 text-sm font-semibold">{addr.name}</p>
-                  {addr.isDefault && <span className="text-[10px] font-semibold bg-warm-100 text-warm-600 px-2 py-0.5 rounded-full">Default</span>}
+        <div className="space-y-3.5 mb-8">
+          {addresses.map(addr => {
+            const isOffice = addr.street.includes('(Kantor)')
+            const cleanStreet = addr.street.replace(/\s*\((Rumah|Kantor)\)/g, '')
+
+            return (
+              <div
+                key={addr.id}
+                className={`border rounded-2xl p-4 sm:p-5 bg-white transition-all shadow-xs ${
+                  addr.isDefault ? 'border-warm-500 bg-warm-50/20 ring-1 ring-warm-500/30' : 'border-stone-200 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    {/* Header: Name, Phone, Badges */}
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="text-stone-900 font-bold text-sm">{addr.name}</span>
+                      <span className="text-stone-400 text-xs">|</span>
+                      <span className="text-stone-600 text-xs font-mono font-medium">{addr.phone}</span>
+                      {addr.isDefault && (
+                        <span className="text-[10px] font-semibold bg-warm-100 text-warm-800 border border-warm-300 px-2 py-0.5 rounded-full">
+                          Utama (Default)
+                        </span>
+                      )}
+                      <span className="text-[10px] font-medium bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full border border-stone-200">
+                        {isOffice ? '🏢 Kantor' : '🏠 Rumah'}
+                      </span>
+                    </div>
+
+                    {/* Street & Notes */}
+                    <p className="text-stone-800 text-xs sm:text-sm leading-relaxed mb-1 font-normal">
+                      {cleanStreet}
+                    </p>
+
+                    {/* City, Province, Postal Code */}
+                    <p className="text-stone-500 text-xs">
+                      {addr.city}, Indonesia {addr.zip}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col gap-1 text-xs font-medium flex-shrink-0 items-end">
+                    <button
+                      onClick={() => startEdit(addr)}
+                      className="text-stone-700 hover:text-stone-900 font-semibold px-2.5 py-1 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
+                    >
+                      Ubah
+                    </button>
+                    {!addr.isDefault && (
+                      <button
+                        onClick={() => setDefault(addr.id)}
+                        className="text-warm-600 hover:text-warm-800 font-medium px-2.5 py-1 rounded-lg hover:bg-warm-50 transition-colors cursor-pointer"
+                      >
+                        Atur sbg Utama
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteAddr(addr.id)}
+                      className="text-red-500 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
-                <p className="text-stone-400 text-sm">{addr.phone}</p>
-                <p className="text-stone-500 text-sm">{addr.street}, {addr.city}, {addr.zip}, {addr.country}</p>
               </div>
-              <div className="flex flex-col gap-1.5 text-xs font-medium flex-shrink-0 ml-4 items-end">
-                <button onClick={() => startEdit(addr)} className="text-stone-600 hover:text-stone-900 transition-colors">Edit</button>
-                {!addr.isDefault && <button onClick={() => setDefault(addr.id)} className="text-warm-600 hover:text-warm-800 transition-colors">Set as Default</button>}
-                <button onClick={() => deleteAddr(addr.id)} className="text-red-500 hover:text-red-600 transition-colors">Remove</button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {/* Add / Edit form */}
-      <h3 className="text-stone-900 text-lg font-semibold mb-5" style={{ fontFamily: 'var(--font-display)' }}>
-        {editingId !== null ? 'Edit Address' : 'Add New Address'}
-      </h3>
-      {error && <p className="text-red-500 text-xs bg-red-50 border border-red-100 p-3 rounded-lg mb-4">{error}</p>}
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
-        <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Recipient Name *</label>
-          <input required placeholder="Full name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inp} />
-        </div>
-        <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Phone Number *</label>
-          <input required type="tel" placeholder="+62 812 3456 7890" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className={inp} />
-        </div>
-        <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Street Address *</label>
-          <input required placeholder="Jl. Sudirman No. 12" value={form.street} onChange={e => setForm({ ...form, street: e.target.value })} className={inp} />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">City *</label>
-            <input required placeholder="Jakarta" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} className={inp} />
-          </div>
-          <div>
-            <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Postal Code *</label>
-            <input required placeholder="10210" value={form.zip} onChange={e => setForm({ ...form, zip: e.target.value })} className={inp} />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Country *</label>
-          <select required value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} className={inp}>
-            <option>Indonesia</option>
-            <option>Malaysia</option>
-            <option>Singapore</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div className="flex gap-3">
-          {editingId !== null && (
-            <button type="button" onClick={() => { setEditingId(null); setForm({ name: '', phone: '', street: '', city: '', zip: '', country: 'Indonesia' }) }}
-              className="px-6 py-3 rounded-xl text-sm font-semibold border border-stone-300 text-stone-700 hover:border-stone-500 transition-all">
-              Cancel
-            </button>
-          )}
-          <button type="submit"
-            className={`px-8 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all ${saved ? 'bg-green-600 text-white' : 'bg-stone-900 text-white hover:bg-stone-800'}`}>
-            {saved ? '✓ Saved' : editingId !== null ? 'Save Changes' : 'Add Address'}
-          </button>
-        </div>
-      </form>
-    </div>
-  )
-}
+      {/* Add / Edit Form (Shopee Style) */}
+      {(showAddForm || addresses.length === 0) && (
+        <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 sm:p-6 mb-4">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <h3 className="text-stone-900 text-base font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              {editingId !== null ? 'Ubah Alamat Pengiriman' : 'Tambah Alamat Baru'}
+            </h3>
 
-// ── Payment Tab ────────────────────────────────────────────────────────────────
-function PaymentTab() {
-  const [cards] = useState<any[]>([])
-  return (
-    <div>
-      <h2 className="text-stone-900 text-2xl mb-8" style={{ fontFamily: 'var(--font-display)' }}>Payment Method</h2>
-      <div className="space-y-3 mb-8">
-        {cards.map(card => (
-          <div key={card.id} className="flex items-center justify-between border border-stone-200 rounded-xl px-5 py-4 bg-white">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-7 bg-stone-900 rounded flex items-center justify-center">
-                <span className="text-white text-[10px] font-bold tracking-tight">{card.type}</span>
+            {/* Label Alamat: Rumah / Kantor */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-stone-200 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, label: 'Rumah' }))}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  form.label === 'Rumah'
+                    ? 'bg-warm-400 text-stone-900 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>🏠</span>
+                <span>Rumah</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, label: 'Kantor' }))}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  form.label === 'Kantor'
+                    ? 'bg-warm-400 text-stone-900 shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>🏢</span>
+                <span>Kantor</span>
+              </button>
+            </div>
+          </div>
+
+          {error && <p className="text-red-500 text-xs bg-red-50 border border-red-100 p-3 rounded-xl mb-4">{error}</p>}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Kontak Penerima: 2 Kolom */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1.5">Nama Lengkap Penerima *</label>
+                <input
+                  required
+                  placeholder="Nama penerima"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  className={inp}
+                />
               </div>
               <div>
-                <p className="text-stone-900 text-sm font-semibold">•••• •••• •••• {card.last4}</p>
-                <p className="text-stone-400 text-xs">Expires {card.expiry} · {card.name}</p>
+                <label className="block text-xs font-semibold text-stone-700 mb-1.5">Nomor Telepon / WhatsApp *</label>
+                <input
+                  required
+                  type="tel"
+                  placeholder="Contoh: 081234567890"
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
+                  className={inp}
+                />
               </div>
             </div>
-            <div className="flex gap-3 text-xs font-medium">
-              <button className="text-stone-600 hover:text-stone-900 transition-colors">Edit</button>
-              <button className="text-red-500 hover:text-red-600 transition-colors">Delete</button>
+
+            {/* Wilayah: Provinsi & Kota/Kabupaten (Dropdown Dinamis) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1.5">Provinsi *</label>
+                <select
+                  value={form.province}
+                  onChange={e => {
+                    const newProv = e.target.value
+                    const cities = PROVINCE_CITY_MAP[newProv] || []
+                    setForm(prev => ({
+                      ...prev,
+                      province: newProv,
+                      city: cities[0] || ''
+                    }))
+                  }}
+                  className={inp}
+                >
+                  {Object.keys(PROVINCE_CITY_MAP).map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1.5">Kota / Kabupaten *</label>
+                {form.province === 'Lainnya' ? (
+                  <input
+                    required
+                    placeholder="Ketik nama Kota / Kabupaten"
+                    value={form.city}
+                    onChange={e => setForm({ ...form, city: e.target.value })}
+                    className={inp}
+                  />
+                ) : (
+                  <select
+                    value={form.city}
+                    onChange={e => setForm({ ...form, city: e.target.value })}
+                    className={inp}
+                  >
+                    {(PROVINCE_CITY_MAP[form.province] || []).map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <div className="border-2 border-dashed border-stone-200 rounded-xl px-5 py-8 text-center hover:border-stone-400 transition-colors cursor-pointer group">
-        <div className="w-10 h-10 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-stone-200 transition-colors">
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="text-stone-500">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
+
+            {/* Kecamatan & Kode Pos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1.5">Kecamatan *</label>
+                <input
+                  required
+                  placeholder="Contoh: Coblong, Kebayoran Baru, Menteng"
+                  value={form.district}
+                  onChange={e => setForm({ ...form, district: e.target.value })}
+                  className={inp}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1.5">Kode Pos *</label>
+                <input
+                  required
+                  placeholder="Contoh: 40132"
+                  maxLength={6}
+                  value={form.zip}
+                  onChange={e => setForm({ ...form, zip: e.target.value })}
+                  className={inp}
+                />
+              </div>
+            </div>
+
+            {/* Nama Jalan, Gedung, No. Rumah */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 mb-1.5">Nama Jalan, Gedung, No. Rumah *</label>
+              <textarea
+                required
+                rows={2}
+                placeholder="Contoh: Jl. Dipati Ukur No. 28, RT 03 / RW 07"
+                value={form.street}
+                onChange={e => setForm({ ...form, street: e.target.value })}
+                className={`${inp} resize-none`}
+              />
+            </div>
+
+            {/* Detail Lainnya / Patokan */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-xs font-semibold text-stone-700">Detail Lainnya / Patokan</label>
+                <span className="text-[11px] text-stone-400">Opsional (Sangat membantu supir truk furnitur)</span>
+              </div>
+              <input
+                placeholder="Contoh: Pagar hitam, samping masjid Al-Ikhlas, rumah cat putih (Truk kargo bisa masuk)"
+                value={form.notes}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                className={inp}
+              />
+            </div>
+
+            {/* Checkbox Alamat Utama */}
+            <div className="flex items-center gap-2.5 pt-1">
+              <input
+                type="checkbox"
+                id="isDefaultCheckbox"
+                checked={form.isDefault}
+                onChange={e => setForm({ ...form, isDefault: e.target.checked })}
+                className="accent-stone-900 w-4 h-4 rounded cursor-pointer"
+              />
+              <label htmlFor="isDefaultCheckbox" className="text-xs font-medium text-stone-800 cursor-pointer select-none">
+                Atur sebagai Alamat Utama (Otomatis terpilih saat checkout belanja)
+              </label>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-stone-300 text-stone-700 hover:border-stone-500 transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className={`px-7 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all cursor-pointer shadow-sm ${
+                  saved ? 'bg-stone-800 text-white' : 'bg-stone-900 text-white hover:bg-stone-800'
+                }`}
+              >
+                {saved ? '✓ Tersimpan' : editingId !== null ? 'Simpan Perubahan' : 'Simpan Alamat'}
+              </button>
+            </div>
+          </form>
         </div>
-        <p className="text-stone-700 text-sm font-medium">Add New Payment Method</p>
-        <p className="text-stone-400 text-xs mt-1">Credit card, debit card, or bank transfer</p>
-      </div>
+      )}
     </div>
   )
 }
@@ -678,6 +951,7 @@ function PasswordTab({ userId }: { userId?: number }) {
 // ── Main AccountPage ───────────────────────────────────────────────────────────
 export default function AccountPage({ currentUser, onLogout, navigate, onUpdateUser }: AccountPageProps) {
   const [activeTab, setActiveTab] = useState<Tab>('personal')
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   if (!currentUser) {
     return (
@@ -700,14 +974,6 @@ export default function AccountPage({ currentUser, onLogout, navigate, onUpdateU
 
   return (
     <div className="bg-stone-50 min-h-screen">
-      {/* Header */}
-      <div className="border-b border-stone-200 bg-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 py-3 flex items-center gap-2 text-xs text-stone-400">
-          <button onClick={() => navigate('home')} className="hover:text-stone-700 transition-colors">Home</button>
-          <span>/</span>
-          <span className="text-stone-700">My Account</span>
-        </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-10">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
@@ -721,7 +987,7 @@ export default function AccountPage({ currentUser, onLogout, navigate, onUpdateU
                 return (
                   <button
                     key={key}
-                    onClick={() => isLogout ? onLogout() : setActiveTab(key as Tab)}
+                    onClick={() => isLogout ? setShowLogoutConfirm(true) : setActiveTab(key as Tab)}
                     className={`whitespace-nowrap lg:whitespace-normal flex-shrink-0 lg:w-full flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-medium text-left transition-all ${
                       isActive
                         ? 'bg-warm-400 text-stone-900 shadow-sm'
@@ -744,12 +1010,18 @@ export default function AccountPage({ currentUser, onLogout, navigate, onUpdateU
           <div className="w-full flex-1 bg-white rounded-2xl border border-stone-200 p-4 sm:p-6 lg:p-8 min-h-[500px]">
             {activeTab === 'personal' && <PersonalTab user={currentUser} onUpdateUser={onUpdateUser} />}
             {activeTab === 'orders'   && <OrdersTab currentUser={currentUser} />}
-            {activeTab === 'address'  && <AddressTab userId={currentUser.id} />}
-            {activeTab === 'payment'  && <PaymentTab />}
+            {activeTab === 'address'  && <AddressTab user={currentUser} />}
             {activeTab === 'password' && <PasswordTab userId={currentUser.id} />}
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={onLogout}
+      />
     </div>
   )
 }

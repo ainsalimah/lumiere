@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import AppShell from '@/components/AppShell'
@@ -18,11 +18,15 @@ export default function WishlistPageClient() {
   const navigate = (page: Page) => {
     const routes: Record<Page, string> = {
       home: '/', shop: '/shop', categories: '/categories', about: '/about',
-      contact: '/contact', account: '/account', wishlist: '/wishlist', admin: '/admin',
+      contact: '/contact', account: '/account', wishlist: '/wishlist', cart: '/cart', admin: '/admin',
       login: '/login', register: '/register', 'forgot-password': '/forgot-password', 'reset-password': '/reset-password',
     }
     setSelectedProduct(null)
     router.push(routes[page] || '/')
+  }
+
+  const handleOpenProduct = (p: Product) => {
+    setSelectedProduct(p)
   }
 
   if (selectedProduct) {
@@ -32,7 +36,7 @@ export default function WishlistPageClient() {
           product={selectedProduct}
           onBack={() => setSelectedProduct(null)}
           addToCart={addToCartQty}
-          openProduct={setSelectedProduct}
+          openProduct={handleOpenProduct}
           navigate={navigate}
           wishlist={wishlist}
           toggleWishlist={toggleWishlist}
@@ -47,7 +51,7 @@ export default function WishlistPageClient() {
         wishlist={wishlist}
         toggleWishlist={toggleWishlist}
         addToCart={addToCart}
-        openProduct={setSelectedProduct}
+        openProduct={handleOpenProduct}
         navigate={navigate}
       />
     </AppShell>

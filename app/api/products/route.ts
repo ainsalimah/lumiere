@@ -3,9 +3,11 @@ import { productService } from '@/services/ProductService'
 import { createProductSchema } from '@/lib/schemas'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { ApiResponse } from '@/lib/response'
+import { seedDemoReviews } from '@/lib/seedAdmin'
 
 export async function GET() {
   try {
+    await seedDemoReviews()
     const products = await productService.getAll()
     return ApiResponse.ok(products)
   } catch (err) {

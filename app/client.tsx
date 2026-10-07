@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import AppShell from '@/components/AppShell'
@@ -20,7 +20,7 @@ export default function HomePageClient() {
   const navigate = (page: Page, preFilter?: ShopPreFilter) => {
     const routes: Record<Page, string> = {
       home: '/', shop: '/shop', categories: '/categories', about: '/about',
-      contact: '/contact', account: '/account', wishlist: '/wishlist', admin: '/admin',
+      contact: '/contact', account: '/account', wishlist: '/wishlist', cart: '/cart', admin: '/admin',
       login: '/login', register: '/register', 'forgot-password': '/forgot-password', 'reset-password': '/reset-password',
     }
     if (page === 'shop' && preFilter) {
@@ -30,6 +30,10 @@ export default function HomePageClient() {
     router.push(routes[page] || '/')
   }
 
+  const handleOpenProduct = (p: Product) => {
+    router.push(`/products/${p.id}`)
+  }
+
   if (selectedProduct) {
     return (
       <AppShell>
@@ -37,7 +41,7 @@ export default function HomePageClient() {
           product={selectedProduct}
           onBack={() => setSelectedProduct(null)}
           addToCart={addToCartQty}
-          openProduct={setSelectedProduct}
+          openProduct={handleOpenProduct}
           navigate={navigate}
           wishlist={wishlist}
           toggleWishlist={toggleWishlist}
@@ -51,7 +55,7 @@ export default function HomePageClient() {
       <HomePage
         navigate={navigate}
         addToCart={addToCart}
-        openProduct={setSelectedProduct}
+        openProduct={handleOpenProduct}
         wishlist={wishlist}
         toggleWishlist={toggleWishlist}
       />

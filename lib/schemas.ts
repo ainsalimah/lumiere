@@ -33,7 +33,7 @@ export const resetPasswordSchema = z.object({
 
 export const orderItemSchema = z.object({
   productId: z.number().int().positive('Invalid product ID'),
-  qty: z.number().int().min(1, 'Quantity must be at least 1'),
+  qty: z.number().int().min(1, 'Quantity must be at least 1').max(99),
   color: z.string().default('Default'),
 })
 
@@ -41,11 +41,11 @@ export const createOrderSchema = z.object({
   userId: z.number().int().positive().optional().nullable(),
   customerName: z.string().min(2, 'Customer name is required'),
   email: z.string().email('Invalid email address'),
-  phone: z.string().optional().default(''),
+  phone: z.string().trim().regex(/^\+?[\d\s()-]{8,20}$/, 'Isi nomor telepon yang valid.').refine(value => value.replace(/\D/g, '').length >= 8, 'Isi nomor telepon yang valid.'),
   address: z.string().min(5, 'Delivery address is required'),
   total: z.number().int().min(0, 'Total cannot be negative'),
   paymentMethod: z.string().min(1, 'Payment method is required'),
-  items: z.array(orderItemSchema).min(1, 'Order must contain at least one item'),
+  items: z.array(orderItemSchema).min(1, 'Order must contain at least one item').max(50),
 })
 
 export const updateOrderStatusSchema = z.object({
@@ -62,34 +62,38 @@ export const addressSchema = z.object({
   isDefault: z.boolean().optional().default(false),
 })
 
+const imageSchema = z.string().max(650000, 'Foto terlalu besar. Gunakan foto yang telah dikompres.').refine(value => /^data:image\/(jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$/.test(value) || /^https:\/\//.test(value) || /^\/(?!\/)/.test(value), 'Format foto tidak valid.')
+
 export const createProductSchema = z.object({
   name: z.string().min(2, 'Product name is required'),
-  category: z.string().min(2, 'Category is required'),
+  category: z.enum(['Chair', 'Sofa', 'Table', 'Bundle']),
   subcategory: z.string().optional().nullable(),
-  originalPrice: z.coerce.number().int().positive('Price must be greater than 0'),
-  discount: z.coerce.number().int().min(0).max(100).default(0),
+  description: z.string().max(4000).optional().nullable(),
+  originalPrice: z.coerce.number().int().positive('Price must be greater than 0').max(2147483647),
+  discount: z.coerce.number().int().min(0).max(99).default(0),
   rating: z.coerce.number().min(0).max(5).default(5),
   reviews: z.coerce.number().int().min(0).default(0),
-  img: z.string().optional().default(''),
-  gallery: z.array(z.string()).optional().default([]),
-  inStock: z.coerce.boolean().default(true),
+  img: imageSchema,
+  gallery: z.array(imageSchema).max(4).optional().default([]),
+  inStock: z.boolean().default(true),
   room: z.string().default('Living Room'),
   material: z.string().default('Wood'),
-  colors: z.array(z.string()).optional().default(['#000000']),
+  colors: z.array(z.string().trim().min(1).max(40)).min(1).max(15).default(['Natural']),
 })
 
 export const updateProductSchema = z.object({
   name: z.string().min(2).optional(),
-  category: z.string().optional(),
+  category: z.enum(['Chair', 'Sofa', 'Table', 'Bundle']).optional(),
   subcategory: z.string().optional().nullable(),
-  originalPrice: z.coerce.number().int().positive().optional(),
-  discount: z.coerce.number().int().min(0).max(100).optional(),
-  inStock: z.coerce.boolean().optional(),
+  description: z.string().max(4000).optional().nullable(),
+  originalPrice: z.coerce.number().int().positive().max(2147483647).optional(),
+  discount: z.coerce.number().int().min(0).max(99).optional(),
+  inStock: z.boolean().optional(),
   room: z.string().optional(),
   material: z.string().optional(),
-  colors: z.array(z.string()).optional(),
-  img: z.string().optional(),
-  gallery: z.array(z.string()).optional(),
+  colors: z.array(z.string().trim().min(1).max(40)).min(1).max(15).optional(),
+  img: imageSchema.optional(),
+  gallery: z.array(imageSchema).max(4).optional(),
 })
 
 export const createReviewSchema = z.object({

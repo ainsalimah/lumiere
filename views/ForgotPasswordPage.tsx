@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react';
 import type { Page } from '@/types'
@@ -46,10 +46,10 @@ export default function ForgotPasswordPage({ navigate }: Props) {
   return (
     <div className="min-h-screen flex w-full bg-white">
       {/* Left Form Side */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 md:px-24 xl:px-32 relative py-12">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-5 sm:px-12 md:px-20 xl:px-32 relative py-12">
         {/* Back / Logo Area */}
         <div
-          className="absolute top-8 left-8 sm:left-16 md:left-24 xl:left-32 flex items-center gap-2 cursor-pointer"
+          className="absolute top-8 left-5 sm:left-12 md:left-20 xl:left-32 flex items-center gap-2 cursor-pointer"
           onClick={() => navigate('home')}
         >
           <div
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage({ navigate }: Props) {
             className="text-xl font-bold tracking-tight text-stone-900"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Lumière<span className="text-[#e29b47]">.</span>
+            Lumière
           </span>
         </div>
 
@@ -137,7 +137,7 @@ export default function ForgotPasswordPage({ navigate }: Props) {
             </>
           ) : (
             <div className="text-center py-6">
-              <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#d09354] border border-amber-100">
+              <div className="w-16 h-16 bg-warm-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-warm-600 border border-warm-200">
                 <svg
                   width="32"
                   height="32"

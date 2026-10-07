@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import type { Page, AuthUser } from '@/types'
@@ -15,14 +15,12 @@ export default function RegisterPage({ navigate, onAuth }: Props) {
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
-  const [agreed, setAgreed] = useState(false)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!name || !email || !password) { setError('Please fill in all fields.'); return }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    if (!agreed) { setError('You must agree to the Terms & Condition.'); return }
+    if (!name.trim() || !email.trim() || !password) { setError('Semua bidang wajib diisi.'); return }
+    if (password.length < 6) { setError('Kata sandi minimal 6 karakter.'); return }
     
     try {
       const res = await fetch('/api/register', {
@@ -64,49 +62,48 @@ export default function RegisterPage({ navigate, onAuth }: Props) {
   return (
     <div className="min-h-screen flex w-full bg-white">
       {/* Left Form Side */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 md:px-24 xl:px-32 relative py-12">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-5 sm:px-12 md:px-20 xl:px-32 relative py-12">
         
         {/* Back / Logo Area */}
-        <div className="absolute top-8 left-8 sm:left-16 md:left-24 xl:left-32 flex items-center gap-2 cursor-pointer" onClick={() => navigate('home')}>
+        <div className="absolute top-8 left-5 sm:left-12 md:left-20 xl:left-32 flex items-center gap-2 cursor-pointer" onClick={() => navigate('home')}>
           <div className="w-8 h-8 rounded-sm bg-stone-900 flex items-center justify-center text-white font-bold" style={{ fontFamily: 'var(--font-display)' }}>L</div>
-          <span className="text-xl font-bold tracking-tight text-stone-900" style={{ fontFamily: 'var(--font-display)' }}>Lumière<span className="text-[#e29b47]">.</span></span>
+          <span className="text-xl font-bold tracking-tight text-stone-900" style={{ fontFamily: 'var(--font-display)' }}>Lumière</span>
         </div>
 
-        <div className="max-w-md w-full mx-auto mt-12">
-          <h1 className="text-4xl font-semibold text-stone-900 mb-2">Sign Up</h1>
-          <p className="text-stone-500 mb-8">Fill your information below or register with your social account.</p>
+        <div className="max-w-md w-full mx-auto mt-16 sm:mt-12">
+          <h1 className="sr-only">Daftar Akun</h1>
 
           <form onSubmit={handleRegister} className="space-y-5">
             <div>
-              <label className="block text-stone-700 font-medium mb-2">Full Name *</label>
+              <label className="block text-stone-700 font-medium mb-2 text-sm">Nama Lengkap</label>
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Enter Full Name"
+                placeholder="Nama Anda (contoh: Budi Pratama)"
                 className="w-full border border-stone-200 text-stone-900 px-4 py-3.5 rounded-xl focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-shadow placeholder:text-stone-400"
               />
             </div>
 
             <div>
-              <label className="block text-stone-700 font-medium mb-2">Email *</label>
+              <label className="block text-stone-700 font-medium mb-2 text-sm">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Enter Email Address"
+                placeholder="contoh@gmail.com"
                 className="w-full border border-stone-200 text-stone-900 px-4 py-3.5 rounded-xl focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-shadow placeholder:text-stone-400"
               />
             </div>
             
             <div>
-              <label className="block text-stone-700 font-medium mb-2">Password *</label>
+              <label className="block text-stone-700 font-medium mb-2 text-sm">Kata Sandi</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter Password"
+                  placeholder="Minimal 6 karakter"
                   className="w-full border border-stone-200 text-stone-900 px-4 py-3.5 rounded-xl focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-shadow placeholder:text-stone-400 pr-12"
                 />
                 <button
@@ -119,49 +116,33 @@ export default function RegisterPage({ navigate, onAuth }: Props) {
               </div>
             </div>
 
-            <label className="flex items-start gap-3 cursor-pointer group mt-2">
-              <div className="relative flex items-center justify-center w-5 h-5 rounded border-2 border-stone-300 group-hover:border-stone-900 transition-colors mt-0.5 flex-shrink-0">
-                <input 
-                  type="checkbox" 
-                  checked={agreed}
-                  onChange={e => setAgreed(e.target.checked)}
-                  className="absolute opacity-0 w-full h-full cursor-pointer peer" 
-                />
-                <svg className="w-3.5 h-3.5 text-stone-900 opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </div>
-              <span className="text-stone-700 font-medium select-none text-sm leading-relaxed">
-                Agree with <span className="underline underline-offset-2">Terms & Condition</span> and <span className="underline underline-offset-2">Privacy Policy</span>
-              </span>
-            </label>
-
             {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-xl border border-red-100 mt-2">{error}</p>}
 
             <button
               type="submit"
               className="w-full bg-stone-900 hover:bg-stone-800 text-white py-4 rounded-xl font-medium tracking-wide transition-colors mt-4"
             >
-              Sign Up
+              Daftar
             </button>
           </form>
 
           <div className="relative my-6 flex items-center justify-center">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-stone-200"></div></div>
-            <span className="relative bg-white px-4 text-stone-500 text-sm">or Sign Up with</span>
+            <span className="relative bg-white px-4 text-stone-500 text-sm">atau Daftar dengan</span>
           </div>
 
           <GoogleAuthButton
             text="signup_with"
             onSuccess={(user) => {
               onAuth(user);
-              navigate('home');
             }}
             onError={(msg) => setError(msg)}
           />
 
           <p className="text-center mt-8 text-stone-600 font-medium">
-            Already have an account?{' '}
+            Sudah punya akun?{' '}
             <button onClick={() => navigate('login')} className="text-stone-700 hover:text-stone-900 underline underline-offset-2 transition-colors">
-              Sign In
+              Masuk
             </button>
           </p>
         </div>

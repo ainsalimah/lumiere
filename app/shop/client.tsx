@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import AppShell from '@/components/AppShell'
@@ -21,16 +21,27 @@ export default function ShopPageClient() {
   useEffect(() => {
     const stored = sessionStorage.getItem('shopPreFilter')
     if (stored) { setPreFilter(JSON.parse(stored)); sessionStorage.removeItem('shopPreFilter') }
+    const storedProduct = sessionStorage.getItem('openProductOnShop')
+    if (storedProduct) {
+      try {
+        setSelectedProduct(JSON.parse(storedProduct))
+      } catch {}
+      sessionStorage.removeItem('openProductOnShop')
+    }
   }, [])
 
   const navigate = (page: Page) => {
     const routes: Record<Page, string> = {
       home: '/', shop: '/shop', categories: '/categories', about: '/about',
-      contact: '/contact', account: '/account', wishlist: '/wishlist', admin: '/admin',
+      contact: '/contact', account: '/account', wishlist: '/wishlist', cart: '/cart', admin: '/admin',
       login: '/login', register: '/register', 'forgot-password': '/forgot-password', 'reset-password': '/reset-password',
     }
     setSelectedProduct(null)
     router.push(routes[page] || '/')
+  }
+
+  const handleOpenProduct = (p: Product) => {
+    router.push(`/products/${p.id}`)
   }
 
   if (selectedProduct) {
@@ -40,7 +51,7 @@ export default function ShopPageClient() {
           product={selectedProduct}
           onBack={() => setSelectedProduct(null)}
           addToCart={addToCartQty}
-          openProduct={setSelectedProduct}
+          openProduct={handleOpenProduct}
           navigate={navigate}
           wishlist={wishlist}
           toggleWishlist={toggleWishlist}
@@ -53,7 +64,7 @@ export default function ShopPageClient() {
     <AppShell>
       <ShopPage
         addToCart={addToCart}
-        openProduct={setSelectedProduct}
+        openProduct={handleOpenProduct}
         preFilter={preFilter}
         wishlist={wishlist}
         toggleWishlist={toggleWishlist}

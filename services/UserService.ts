@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { SALT_ROUNDS } from '@/lib/auth'
+import { isOwner } from '@/lib/owner'
 
 export interface UpdateProfileDTO {
   name: string
@@ -28,7 +29,7 @@ export class UserService {
       name: updated.name,
       email: updated.email,
       phone: updated.phone || '',
-      isAdmin: updated.isAdmin,
+      isAdmin: isOwner(updated.email),
     }
   }
 

@@ -1,41 +1,29 @@
-﻿import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest } from 'next/server'
+import { orderService } from '@/services/OrderService'
 import { requireAuth } from '@/lib/auth'
-import { createReviewSchema } from '@/lib/schemas'
 import { ApiResponse } from '@/lib/response'
 
-export async function POST(req: NextRequest) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const authResult = requireAuth(req)
   if (authResult instanceof Response) return authResult
 
+  const { id } = await params
+  const userId = Number(id)
+  if (isNaN(userId)) return ApiResponse.badRequest('Invalid user ID')
+
+  // Users can only fetch their own orders unless they are admin
+  if (!authResult.user.isAdmin && authResult.user.id !== userId) {
+    return ApiResponse.forbidden('You are not authorized to view these orders.')
+  }
+
   try {
-    const body = await req.json()
-    const parsed = createReviewSchema.safeParse(body)
-    if (!parsed.success) return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
-
-    const { productId, orderId, authorName, rating, title, body: reviewBody } = parsed.data
-
-    const review = await (prisma as any).review.upsert({
-      where: { productId_orderId: { productId: Number(productId), orderId } },
-      update: {
-        rating: Number(rating),
-        title: title || '',
-        body: reviewBody || '',
-        authorName: authorName || authResult.user.email || 'Anonymous',
-      },
-      create: {
-        productId: Number(productId),
-        orderId,
-        authorName: authorName || authResult.user.email || 'Anonymous',
-        rating: Number(rating),
-        title: title || '',
-        body: reviewBody || '',
-      },
-    })
-
-    return ApiResponse.created(review)
-  } catch (error) {
-    console.error('Failed to save review:', error)
-    return ApiResponse.serverError('Failed to save review')
+    const orders = await orderService.getUserOrders(userId)
+    return ApiResponse.ok(orders)
+  } catch (err) {
+    console.error('Failed to fetch user orders:', err)
+    return ApiResponse.serverError('Failed to fetch orders')
   }
 }

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react';
 import type { Page } from '@/types'
@@ -112,7 +112,7 @@ export default function ResetPasswordPage({ navigate, token: propToken }: Props)
             className="text-xl font-bold tracking-tight text-stone-900"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Lumière<span className="text-[#e29b47]">.</span>
+            Lumière
           </span>
         </div>
 
@@ -217,7 +217,7 @@ export default function ResetPasswordPage({ navigate, token: propToken }: Props)
             </>
           ) : (
             <div className="text-center py-6">
-              <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-emerald-600 border border-emerald-100">
+              <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-green-600 border border-green-100">
                 <svg
                   width="32"
                   height="32"

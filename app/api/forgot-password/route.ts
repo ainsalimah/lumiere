@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
     return ApiResponse.ok({
       message: 'Jika email Anda terdaftar, instruksi reset kata sandi telah dikirim ke email tersebut.',
     })
-  } catch {
-    return ApiResponse.serverError('Gagal memproses permintaan reset kata sandi. Silakan coba lagi.')
+  } catch (err: any) {
+    console.error('[ForgotPassword] Error:', err)
+    return ApiResponse.serverError(err?.message || 'Gagal memproses permintaan reset kata sandi. Silakan coba lagi.')
   }
 }

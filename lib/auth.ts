@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken'
 import { NextRequest } from 'next/server'
+import { isOwner } from '@/lib/owner'
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'lumiere-super-secret-key-change-in-production'
+export const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'lumiere-local-development-secret')
 export const SALT_ROUNDS = 10
 
 export interface TokenPayload {
@@ -11,11 +12,13 @@ export interface TokenPayload {
 }
 
 export function signToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
+  if (!JWT_SECRET) throw new Error('Session signing is not configured.')
+  return jwt.sign({ ...payload, isAdmin: isOwner(payload.email) }, JWT_SECRET, { expiresIn: '7d' })
 }
 
 export function verifyToken(token: string): TokenPayload {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload
+  const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as TokenPayload
+  return { ...payload, isAdmin: isOwner(payload.email) }
 }
 
 /**
@@ -51,7 +54,7 @@ export function requireAuth(req: NextRequest): { user: TokenPayload } | Response
  * Returns 403 response if user is not admin.
  */
 export function requireAdmin(user: TokenPayload): Response | null {
-  if (!user.isAdmin) {
+  if (!isOwner(user.email)) {
     return new Response(JSON.stringify({ error: 'Admin access required.' }), {
       status: 403,
       headers: { 'Content-Type': 'application/json' },

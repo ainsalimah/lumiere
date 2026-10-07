@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.neon
+.env*
+.tmp-*
+*.log
+*.tsbuildinfo
+tests/
+scripts/check-store-database.cjs

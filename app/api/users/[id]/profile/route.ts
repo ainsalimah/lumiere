@@ -1,41 +1,36 @@
-﻿import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest } from 'next/server'
+import { userService } from '@/services/UserService'
+import { updateProfileSchema } from '@/lib/schemas'
 import { requireAuth } from '@/lib/auth'
-import { createReviewSchema } from '@/lib/schemas'
 import { ApiResponse } from '@/lib/response'
 
-export async function POST(req: NextRequest) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const authResult = requireAuth(req)
   if (authResult instanceof Response) return authResult
 
+  const { id } = await params
+  const userId = Number(id)
+  if (isNaN(userId)) return ApiResponse.badRequest('Invalid user ID')
+
+  // Users can only update their own profile unless they are admin
+  if (!authResult.user.isAdmin && authResult.user.id !== userId) {
+    return ApiResponse.forbidden('You are not authorized to update this profile.')
+  }
+
   try {
     const body = await req.json()
-    const parsed = createReviewSchema.safeParse(body)
-    if (!parsed.success) return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
-
-    const { productId, orderId, authorName, rating, title, body: reviewBody } = parsed.data
-
-    const review = await (prisma as any).review.upsert({
-      where: { productId_orderId: { productId: Number(productId), orderId } },
-      update: {
-        rating: Number(rating),
-        title: title || '',
-        body: reviewBody || '',
-        authorName: authorName || authResult.user.email || 'Anonymous',
-      },
-      create: {
-        productId: Number(productId),
-        orderId,
-        authorName: authorName || authResult.user.email || 'Anonymous',
-        rating: Number(rating),
-        title: title || '',
-        body: reviewBody || '',
-      },
-    })
-
-    return ApiResponse.created(review)
-  } catch (error) {
-    console.error('Failed to save review:', error)
-    return ApiResponse.serverError('Failed to save review')
+    const parsed = updateProfileSchema.safeParse(body)
+    if (!parsed.success) {
+      return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
+    }
+    const updated = await userService.updateProfile(userId, parsed.data)
+    return ApiResponse.ok(updated)
+  } catch (err: any) {
+    console.error('Failed to update profile:', err)
+    if (err.status === 404) return ApiResponse.notFound(err.message)
+    return ApiResponse.serverError('Failed to update profile.')
   }
 }

@@ -1,6 +1,7 @@
-﻿'use client'
+'use client'
 
 import React from 'react'
+import { ORDER_LABELS } from '@/lib/store'
 
 interface InvoiceModalProps {
   open: boolean
@@ -72,7 +73,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto print:max-h-none print:shadow-none print:w-full print:absolute print:inset-0 print:p-0">
         
         {/* Header Actions (hidden when printing) */}
-        <div className="sticky top-0 bg-white border-b border-stone-100 px-7 py-4 flex items-center justify-between z-10 print:hidden">
+        <div className="sticky top-0 bg-white border-b border-stone-100 px-4 sm:px-7 py-4 flex items-center justify-between z-10 print:hidden">
           <h2 className="text-stone-900 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Invoice {order.id}</h2>
           <div className="flex gap-3">
             <button
@@ -97,7 +98,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
         </div>
 
         {/* Invoice Content (This is what gets printed) */}
-        <div id="printable-invoice" className="p-10 bg-white">
+        <div id="printable-invoice" className="p-4 sm:p-8 md:p-10 bg-white">
           <div className="flex items-start justify-between mb-12">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -107,9 +108,8 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
                 <span className="text-stone-900 text-xl tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Lumière</span>
               </div>
               <p className="text-stone-500 text-xs leading-relaxed max-w-[200px]">
-                Grand Lumière Boulevard<br/>
-                Jakarta Selatan<br/>
-                DKI Jakarta, Indonesia
+                Toko furnitur Lumière<br/>
+                Pemesanan melalui konfirmasi pemilik
               </p>
             </div>
             <div className="text-right">
@@ -129,8 +129,9 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
             </div>
             <div className="text-right">
               <p className="text-xs uppercase tracking-widest text-stone-400 font-semibold mb-2">Payment Info</p>
-              <p className="text-stone-900 font-medium text-sm mb-1">{order.method || 'Credit Card'}</p>
-              <p className="text-stone-500 text-xs">Status: <span className="font-semibold text-stone-700">{order.status}</span></p>
+              <p className="text-stone-900 font-medium text-sm mb-1">{order.method || 'Konfirmasi pemilik'}</p>
+              <p className="text-stone-500 text-xs">Status: <span className="font-semibold text-stone-700">{ORDER_LABELS[order.status] || order.status}</span></p>
+              <p className="text-xs text-stone-700 mt-2">Ringkasan pesanan ini bukan bukti pembayaran. Ongkir dikonfirmasi pemilik.</p>
             </div>
           </div>
 
@@ -139,8 +140,6 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
               <tr className="border-b border-stone-200">
                 <th className="pb-3 text-xs uppercase tracking-widest text-stone-400 font-semibold">Item</th>
                 <th className="pb-3 text-xs uppercase tracking-widest text-stone-400 font-semibold text-center w-24">Qty</th>
-                <th className="pb-3 text-xs uppercase tracking-widest text-stone-400 font-semibold text-right w-32">Price</th>
-                <th className="pb-3 text-xs uppercase tracking-widest text-stone-400 font-semibold text-right w-32">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -148,9 +147,6 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
                 const itemName = item.product?.name || item.productName || item.name || 'Furniture Item'
                 const itemColor = item.color || item.selectedColor || 'Default'
                 const itemQty = item.qty || 1
-                const productPrice = item.product?.originalPrice
-                  ? Math.round((item.product.originalPrice * (1 - (item.product.discount || 0) / 100)) / 1000) * 1000
-                  : item.price || Math.round(order.total / Math.max(1, (order.items?.length || 1)))
 
                 return (
                   <tr key={i}>
@@ -159,8 +155,6 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
                       <p className="text-stone-400 text-xs mt-0.5">Color: {itemColor}</p>
                     </td>
                     <td className="py-4 text-stone-600 text-sm text-center">{itemQty}</td>
-                    <td className="py-4 text-stone-600 text-sm text-right">Rp {productPrice.toLocaleString('id-ID')}</td>
-                    <td className="py-4 text-stone-900 font-medium text-sm text-right">Rp {(productPrice * itemQty).toLocaleString('id-ID')}</td>
                   </tr>
                 )
               })}
@@ -174,11 +168,11 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
                 <span>Rp {order.total.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between text-sm text-stone-600 pb-3 border-b border-stone-200">
-                <span>Shipping</span>
-                <span>Free</span>
+                <span>Ongkir</span>
+                <span>Dikonfirmasi pemilik</span>
               </div>
               <div className="flex justify-between font-bold text-lg text-stone-900 pt-1">
-                <span>Total</span>
+                <span>Nilai barang</span>
                 <span>Rp {order.total.toLocaleString('id-ID')}</span>
               </div>
             </div>

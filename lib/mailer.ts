@@ -6,12 +6,57 @@ interface SendResetEmailOptions {
   resetUrl: string
 }
 
+import fs from 'fs'
+import path from 'path'
+import { ownerEmail } from '@/lib/owner'
+
+export async function sendContactEmail(data: { name: string; email: string; subject: string; message: string }): Promise<void> {
+  const config = getSmtpConfig()
+  if (!config.smtpUser || !config.smtpPass || !ownerEmail()) throw new Error('Contact email is not configured')
+  const transporter = nodemailer.createTransport({ host: config.smtpHost, port: config.smtpPort, secure: config.smtpPort === 465, auth: { user: config.smtpUser, pass: config.smtpPass } })
+  await transporter.sendMail({ from: config.fromEmail, to: ownerEmail(), replyTo: data.email, subject: `[Lumière] ${data.subject}`, text: `Nama: ${data.name}\nEmail: ${data.email}\n\n${data.message}` })
+}
+
+function getSmtpConfig() {
+  let user = process.env.SMTP_USER
+  let pass = process.env.SMTP_PASS
+  let host = process.env.SMTP_HOST || 'smtp.gmail.com'
+  let port = parseInt(process.env.SMTP_PORT || '587')
+  let from = process.env.SMTP_FROM
+
+  // Direct read fallback if dev server hasn't restarted
+  if (!user || !pass) {
+    try {
+      const envPath = path.join(process.cwd(), '.env.local')
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8')
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim()
+          if (!trimmed || trimmed.startsWith('#')) continue
+          const [k, ...vParts] = trimmed.split('=')
+          const key = k?.trim()
+          const val = vParts.join('=').trim().replace(/^["']|["']$/g, '')
+          if (key === 'SMTP_USER' && !user) user = val
+          if (key === 'SMTP_PASS' && !pass) pass = val
+          if (key === 'SMTP_HOST') host = val
+          if (key === 'SMTP_PORT') port = parseInt(val)
+          if (key === 'SMTP_FROM') from = val
+        }
+      }
+    } catch {}
+  }
+
+  return {
+    smtpUser: user || '',
+    smtpPass: pass || '',
+    smtpHost: host,
+    smtpPort: port,
+    fromEmail: from || `"Lumière Support" <${user || 'noreply@lumiere.com'}>`,
+  }
+}
+
 export async function sendPasswordResetEmail({ to, name, resetUrl }: SendResetEmailOptions): Promise<{ success: boolean; preview?: boolean }> {
-  const smtpUser = process.env.SMTP_USER
-  const smtpPass = process.env.SMTP_PASS
-  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com'
-  const smtpPort = parseInt(process.env.SMTP_PORT || '587')
-  const fromEmail = process.env.SMTP_FROM || `"Lumière Support" <${smtpUser || 'noreply@lumiere.com'}>`
+  const { smtpUser, smtpPass, smtpHost, smtpPort, fromEmail } = getSmtpConfig()
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -87,14 +132,23 @@ export async function sendPasswordResetEmail({ to, name, resetUrl }: SendResetEm
     return { success: true, preview: true }
   }
 
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: { user: smtpUser, pass: smtpPass },
-  })
+  const cleanPass = smtpPass.trim().replace(/\s+/g, '')
+  const isGmail = smtpHost.includes('gmail')
+  const transporter = nodemailer.createTransport(
+    isGmail
+      ? {
+          service: 'gmail',
+          auth: { user: smtpUser.trim(), pass: cleanPass },
+        }
+      : {
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: { user: smtpUser.trim(), pass: cleanPass },
+        }
+  )
 
-  await transporter.sendMail({
+  const info = await transporter.sendMail({
     from: fromEmail,
     to,
     subject: 'Atur Ulang Kata Sandi Akun Lumière',
@@ -102,5 +156,6 @@ export async function sendPasswordResetEmail({ to, name, resetUrl }: SendResetEm
     text: `Halo ${name},\n\nKlik tautan berikut untuk reset kata sandi (berlaku 15 menit):\n${resetUrl}`,
   })
 
+  console.log(`[Mailer] Password reset email sent to ${to}. MessageId: ${info.messageId}`)
   return { success: true, preview: false }
 }

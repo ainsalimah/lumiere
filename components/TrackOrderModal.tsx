@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 interface TrackItem {
   img: string
@@ -18,7 +18,7 @@ interface TrackOrderModalProps {
 
 const STEPS = [
   {
-    label: 'Order Placed',
+    label: 'Pesanan dikirim',
     icon: (
       <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.4" viewBox="0 0 24 24">
         <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
@@ -28,7 +28,7 @@ const STEPS = [
     ),
   },
   {
-    label: 'Accepted',
+    label: 'Menunggu konfirmasi',
     icon: (
       <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.4" viewBox="0 0 24 24">
         <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
@@ -38,7 +38,7 @@ const STEPS = [
     ),
   },
   {
-    label: 'In Progress',
+    label: 'Diproses',
     icon: (
       <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.4" viewBox="0 0 24 24">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -47,7 +47,7 @@ const STEPS = [
     ),
   },
   {
-    label: 'On the Way',
+    label: 'Dikirim',
     icon: (
       <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.4" viewBox="0 0 24 24">
         <rect x="1" y="3" width="15" height="13" rx="1"/>
@@ -58,7 +58,7 @@ const STEPS = [
     ),
   },
   {
-    label: 'Delivered',
+    label: 'Selesai',
     icon: (
       <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.4" viewBox="0 0 24 24">
         <path d="M9 12l2 2 4-4"/>
@@ -97,7 +97,7 @@ export default function TrackOrderModal({ open, onClose, orderId, activeStep, it
 
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-start justify-between px-7 pt-7 pb-5 border-b border-stone-100">
+        <div className="flex items-start justify-between px-4 sm:px-7 pt-5 sm:pt-7 pb-4 sm:pb-5 border-b border-stone-100">
           <div>
             <h2 className="text-stone-900 text-xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
               Order Status
@@ -115,10 +115,10 @@ export default function TrackOrderModal({ open, onClose, orderId, activeStep, it
           </button>
         </div>
 
-        <div className="px-7 py-6 space-y-6">
+        <div className="px-4 sm:px-7 py-5 sm:py-6 space-y-6">
           {/* ── Progress tracker ── */}
-          <div className="bg-stone-50 border border-stone-100 rounded-xl px-6 py-7">
-            <div className="relative flex items-start justify-between">
+          <div className="bg-stone-50 border border-stone-100 rounded-xl px-4 sm:px-6 py-5 sm:py-7 overflow-x-auto">
+            <div className="relative flex items-start justify-between min-w-[460px] sm:min-w-0">
 
               {/* connecting line behind icons */}
               <div className="absolute top-[22px] left-[calc(10%+14px)] right-[calc(10%+14px)] h-[2px] bg-stone-200 z-0" />

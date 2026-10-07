@@ -1,35 +1,26 @@
-﻿import { NextRequest } from 'next/server'
-import { productService } from '@/services/ProductService'
-import { createProductSchema } from '@/lib/schemas'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { ApiResponse } from '@/lib/response'
+import { seedDemoReviews } from '@/lib/seedAdmin'
 
-export async function GET() {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const productId = Number(id)
+  if (isNaN(productId)) return ApiResponse.badRequest('Invalid product ID')
+
   try {
-    const products = await productService.getAll()
-    return ApiResponse.ok(products)
+    await seedDemoReviews()
+    const reviews = await (prisma as any).review.findMany({
+      where: { productId },
+      orderBy: { date: 'desc' },
+      select: { id: true, authorName: true, rating: true, title: true, body: true, date: true },
+    })
+    return ApiResponse.ok(reviews)
   } catch (err) {
-    console.error('Failed to fetch products:', err)
-    return ApiResponse.serverError('Failed to fetch products')
-  }
-}
-
-export async function POST(req: NextRequest) {
-  const authResult = requireAuth(req)
-  if (authResult instanceof Response) return authResult
-  const adminErr = requireAdmin(authResult.user)
-  if (adminErr) return adminErr
-
-  try {
-    const body = await req.json()
-    const parsed = createProductSchema.safeParse(body)
-    if (!parsed.success) {
-      return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
-    }
-    const product = await productService.create(parsed.data)
-    return ApiResponse.created(product)
-  } catch (err: any) {
-    console.error('Failed to create product:', err)
-    return ApiResponse.serverError(err.message || 'Failed to create product')
+    console.error('Failed to fetch reviews:', err)
+    return ApiResponse.serverError('Failed to fetch reviews')
   }
 }

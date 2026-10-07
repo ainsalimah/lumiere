@@ -19,3 +19,6 @@ next-env.d.ts
 .env.*.local
 !.env.example
 !.env.local.example
+.neon
+
+.vercel

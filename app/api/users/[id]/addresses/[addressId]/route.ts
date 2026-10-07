@@ -1,41 +1,60 @@
-﻿import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest } from 'next/server'
+import { userService } from '@/services/UserService'
+import { addressSchema } from '@/lib/schemas'
 import { requireAuth } from '@/lib/auth'
-import { createReviewSchema } from '@/lib/schemas'
 import { ApiResponse } from '@/lib/response'
 
-export async function POST(req: NextRequest) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; addressId: string }> }
+) {
   const authResult = requireAuth(req)
   if (authResult instanceof Response) return authResult
 
+  const { id, addressId } = await params
+  const userId = Number(id)
+  const addrId = Number(addressId)
+  if (isNaN(userId) || isNaN(addrId)) return ApiResponse.badRequest('Invalid ID')
+
+  if (!authResult.user.isAdmin && authResult.user.id !== userId) {
+    return ApiResponse.forbidden('You are not authorized to update this address.')
+  }
+
   try {
     const body = await req.json()
-    const parsed = createReviewSchema.safeParse(body)
-    if (!parsed.success) return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
+    const parsed = addressSchema.partial().safeParse(body)
+    if (!parsed.success) {
+      return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
+    }
+    const updated = await userService.updateAddress(userId, addrId, parsed.data)
+    return ApiResponse.ok(updated)
+  } catch (err: any) {
+    console.error('Failed to update address:', err)
+    return ApiResponse.serverError('Failed to update address')
+  }
+}
 
-    const { productId, orderId, authorName, rating, title, body: reviewBody } = parsed.data
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; addressId: string }> }
+) {
+  const authResult = requireAuth(req)
+  if (authResult instanceof Response) return authResult
 
-    const review = await (prisma as any).review.upsert({
-      where: { productId_orderId: { productId: Number(productId), orderId } },
-      update: {
-        rating: Number(rating),
-        title: title || '',
-        body: reviewBody || '',
-        authorName: authorName || authResult.user.email || 'Anonymous',
-      },
-      create: {
-        productId: Number(productId),
-        orderId,
-        authorName: authorName || authResult.user.email || 'Anonymous',
-        rating: Number(rating),
-        title: title || '',
-        body: reviewBody || '',
-      },
-    })
+  const { id, addressId } = await params
+  const userId = Number(id)
+  const addrId = Number(addressId)
+  if (isNaN(userId) || isNaN(addrId)) return ApiResponse.badRequest('Invalid ID')
 
-    return ApiResponse.created(review)
-  } catch (error) {
-    console.error('Failed to save review:', error)
-    return ApiResponse.serverError('Failed to save review')
+  if (!authResult.user.isAdmin && authResult.user.id !== userId) {
+    return ApiResponse.forbidden('You are not authorized to delete this address.')
+  }
+
+  try {
+    await userService.deleteAddress(addrId)
+    return ApiResponse.ok({ success: true, message: 'Address deleted successfully.' })
+  } catch (err: any) {
+    console.error('Failed to delete address:', err)
+    return ApiResponse.serverError('Failed to delete address')
   }
 }

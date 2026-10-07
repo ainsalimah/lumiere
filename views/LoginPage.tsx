@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import type { Page, AuthUser } from '@/types'
@@ -18,8 +18,8 @@ export default function LoginPage({ navigate, onAuth }: Props) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!email || !password) { setError('Please fill in all fields.'); return }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
+    if (!email.trim() || !password) { setError('Semua bidang wajib diisi.'); return }
+    if (password.length < 6) { setError('Kata sandi minimal 6 karakter.'); return }
 
     try {
       const res = await fetch('/api/login', {
@@ -61,38 +61,37 @@ export default function LoginPage({ navigate, onAuth }: Props) {
   return (
     <div className="min-h-screen flex w-full bg-white">
       {/* Left Form Side */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 md:px-24 xl:px-32 relative">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-5 sm:px-12 md:px-20 xl:px-32 relative py-12 sm:py-0">
         
         {/* Back / Logo Area */}
-        <div className="absolute top-8 left-8 sm:left-16 md:left-24 xl:left-32 flex items-center gap-2 cursor-pointer" onClick={() => navigate('home')}>
+        <div className="absolute top-8 left-5 sm:left-12 md:left-20 xl:left-32 flex items-center gap-2 cursor-pointer" onClick={() => navigate('home')}>
           <div className="w-8 h-8 rounded-sm bg-stone-900 flex items-center justify-center text-white font-bold" style={{ fontFamily: 'var(--font-display)' }}>L</div>
-          <span className="text-xl font-bold tracking-tight text-stone-900" style={{ fontFamily: 'var(--font-display)' }}>Lumière<span className="text-[#e29b47]">.</span></span>
+          <span className="text-xl font-bold tracking-tight text-stone-900" style={{ fontFamily: 'var(--font-display)' }}>Lumière</span>
         </div>
 
-        <div className="max-w-md w-full mx-auto mt-20">
-          <h1 className="text-4xl font-semibold text-stone-900 mb-2">Sign In</h1>
-          <p className="text-stone-500 mb-10">Please fill your detail to access your account.</p>
+        <div className="max-w-md w-full mx-auto mt-20 sm:mt-16">
+          <h1 className="sr-only">Masuk</h1>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-stone-700 font-medium mb-2">Email *</label>
+              <label className="block text-stone-700 font-medium mb-2 text-sm">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Enter Email Address"
+                placeholder="contoh@gmail.com"
                 className="w-full border border-stone-200 text-stone-900 px-4 py-3.5 rounded-xl focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-shadow placeholder:text-stone-400"
               />
             </div>
             
             <div>
-              <label className="block text-stone-700 font-medium mb-2">Password *</label>
+              <label className="block text-stone-700 font-medium mb-2 text-sm">Kata Sandi</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter Password"
+                  placeholder="Minimal 6 karakter"
                   className="w-full border border-stone-200 text-stone-900 px-4 py-3.5 rounded-xl focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-shadow placeholder:text-stone-400 pr-12"
                 />
                 <button
@@ -111,14 +110,14 @@ export default function LoginPage({ navigate, onAuth }: Props) {
                   <input type="checkbox" className="absolute opacity-0 w-full h-full cursor-pointer peer" />
                   <svg className="w-3.5 h-3.5 text-stone-900 opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                 </div>
-                <span className="text-stone-700 font-medium select-none text-sm">Remember me</span>
+                <span className="text-stone-700 font-medium select-none text-sm">Ingat saya</span>
               </label>
               <button
                 type="button"
                 onClick={() => navigate('forgot-password')}
                 className="text-stone-700 hover:text-stone-900 font-medium text-sm underline underline-offset-2 transition-colors"
               >
-                Forgot Password?
+                Lupa Kata Sandi?
               </button>
             </div>
 
@@ -128,28 +127,27 @@ export default function LoginPage({ navigate, onAuth }: Props) {
               type="submit"
               className="w-full bg-stone-900 hover:bg-stone-800 text-white py-4 rounded-xl font-medium tracking-wide transition-colors mt-2"
             >
-              Sign In
+              Masuk
             </button>
           </form>
 
           <div className="relative my-8 flex items-center justify-center">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-stone-200"></div></div>
-            <span className="relative bg-white px-4 text-stone-500 text-sm">or Sign In with</span>
+            <span className="relative bg-white px-4 text-stone-500 text-sm">atau Masuk dengan</span>
           </div>
 
           <GoogleAuthButton
             text="signin_with"
             onSuccess={(user) => {
               onAuth(user);
-              navigate('home');
             }}
             onError={(msg) => setError(msg)}
           />
 
           <p className="text-center mt-12 text-stone-600 font-medium">
-            Don't have an account?{' '}
+            Belum punya akun?{' '}
             <button onClick={() => navigate('register')} className="text-stone-700 hover:text-stone-900 underline underline-offset-2 transition-colors">
-              Sign Up
+              Daftar
             </button>
           </p>
         </div>

@@ -2,9 +2,10 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from './providers'
 
+
 export const metadata: Metadata = {
-  title: 'Lumière Furniture — Premium Furniture Store',
-  description: 'Discover premium furniture crafted for modern living. Shop sofas, chairs, tables, and more at Lumière.',
+  title: 'Lumière Furniture · Ruang yang terasa seperti rumah',
+  description: 'Jelajahi kursi, sofa, dan meja di Lumière. Pesan furnitur melalui konfirmasi langsung dengan pemilik toko.',
   keywords: 'furniture, premium furniture, sofa, chair, table, home decor, Indonesia',
   openGraph: {
     title: 'Lumière Furniture',

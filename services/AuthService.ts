@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library'
 import { prisma } from '@/lib/prisma'
 import { signToken, SALT_ROUNDS, TokenPayload } from '@/lib/auth'
 import { sendPasswordResetEmail } from '@/lib/mailer'
+import { isOwner } from '@/lib/owner'
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
@@ -32,7 +33,7 @@ function toAuthUserDTO(user: {
     name: user.name,
     email: user.email,
     phone: user.phone || '',
-    isAdmin: user.isAdmin,
+    isAdmin: isOwner(user.email),
   }
 }
 
@@ -57,7 +58,15 @@ export class AuthService {
     password: string
     phone?: string | null
   }): Promise<AuthResult> {
-    const existing = await prisma.user.findUnique({ where: { email: data.email } })
+    if (isOwner(data.email)) throw Object.assign(new Error('Pemilik toko masuk menggunakan Google. Silakan pilih Masuk dengan Google.'), { status: 400 })
+    if (!process.env.DATABASE_URL) {
+      throw Object.assign(
+        new Error('Database belum terhubung (DATABASE_URL belum diatur di .env.local). Silakan gunakan Masuk dengan Google atau atur database PostgreSQL.'),
+        { status: 503 }
+      )
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase().trim() } })
     if (existing) {
       throw Object.assign(new Error('An account with this email already exists.'), { status: 400 })
     }
@@ -77,6 +86,14 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<AuthResult> {
+    if (isOwner(email)) throw Object.assign(new Error('Untuk keamanan toko, pemilik masuk menggunakan Google.'), { status: 400 })
+    if (!process.env.DATABASE_URL) {
+      throw Object.assign(
+        new Error('Database belum terhubung (DATABASE_URL belum diatur di .env.local). Silakan gunakan Masuk dengan Google atau hubungkan database PostgreSQL.'),
+        { status: 503 }
+      )
+    }
+
     const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
     if (!user) {
       throw Object.assign(new Error('Invalid email or password.'), { status: 401 })
@@ -98,6 +115,7 @@ export class AuthService {
   }
 
   async loginWithGoogle(credential?: string, accessToken?: string): Promise<AuthResult> {
+    if (!process.env.GOOGLE_CLIENT_ID) throw Object.assign(new Error('Login Google belum dikonfigurasi.'), { status: 503 })
     let email = ''
     let name = ''
     let googleId = ''
@@ -105,16 +123,18 @@ export class AuthService {
     if (credential) {
       const ticket = await googleClient.verifyIdToken({
         idToken: credential,
-        audience: process.env.GOOGLE_CLIENT_ID || undefined,
+        audience: process.env.GOOGLE_CLIENT_ID,
       })
       const payload = ticket.getPayload()
-      if (!payload?.email) {
+      if (!payload?.email || !payload.email_verified) {
         throw Object.assign(new Error('Invalid Google token payload.'), { status: 400 })
       }
       email = payload.email.toLowerCase().trim()
       name = payload.name || payload.given_name || email.split('@')[0]
       googleId = payload.sub
     } else if (accessToken) {
+      const tokenInfo = await googleClient.getTokenInfo(accessToken)
+      if (tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) throw Object.assign(new Error('Token Google bukan untuk aplikasi ini.'), { status: 401 })
       const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
@@ -122,7 +142,8 @@ export class AuthService {
         throw Object.assign(new Error('Failed to verify Google access token.'), { status: 401 })
       }
       const profile: any = await userRes.json()
-      if (!profile.email) {
+      if (tokenInfo.sub && tokenInfo.sub !== profile.sub) throw Object.assign(new Error('Identitas Google tidak sesuai.'), { status: 401 })
+      if (!profile.email || !profile.sub || profile.email_verified !== true) {
         throw Object.assign(new Error('Invalid Google user profile.'), { status: 400 })
       }
       email = profile.email.toLowerCase().trim()
@@ -132,11 +153,19 @@ export class AuthService {
       throw Object.assign(new Error('Google credential or access token is required.'), { status: 400 })
     }
 
-    let user = await prisma.user.findUnique({ where: { email } })
-    if (!user) {
-      user = await prisma.user.create({ data: { name, email, googleId } })
-    } else if (!user.googleId) {
-      user = await prisma.user.update({ where: { id: user.id }, data: { googleId } })
+
+    let user: any = null
+    try {
+      user = await prisma.user.findUnique({ where: { email } })
+      if (!user) {
+        user = await prisma.user.create({ data: { name, email, googleId, isAdmin: isOwner(email) } })
+      } else {
+        if (user.googleId && user.googleId !== googleId) throw Object.assign(new Error('Identitas Google tidak sesuai dengan akun ini.'), { status: 401 })
+        user = await prisma.user.update({ where: { id: user.id }, data: { googleId, isAdmin: isOwner(email) } })
+      }
+    } catch (dbErr: any) {
+      if (dbErr.status === 401) throw dbErr
+      throw Object.assign(new Error('Login Google sementara tidak tersedia. Silakan coba lagi.'), { status: 503 })
     }
 
     const tokenPayload: TokenPayload = { id: user.id, email: user.email, isAdmin: user.isAdmin }
@@ -156,7 +185,7 @@ export class AuthService {
     })
 
     const resetUrl = `${clientUrl}/reset-password?token=${resetToken}`
-    await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl })
+    await sendPasswordResetEmail({ to: user.email, name: user.name || 'Pelanggan Lumière', resetUrl })
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

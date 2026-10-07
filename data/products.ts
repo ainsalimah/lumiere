@@ -2,7 +2,7 @@ import type { Product } from '@/types'
 
 // ── image pools ───────────────────────────────────────────────────────────────
 const chairImgs = [
-  '/images/products/product-1.jpg',
+  '/images/products/chair-scandi-1.jpg',
   '/images/products/product-2.jpg',
   '/images/products/product-3.jpg',
   '/images/products/product-4.jpg',
@@ -78,6 +78,9 @@ const tableNames = [
   'Two-Drawer Nightstand', 'Hairpin Coffee Table', 'Slab Wood Table', 'Painted Farmhouse Desk', 'Pedestal Side Table',
 ]
 
+// Only these 5 product IDs will have color variants
+const COLORED_IDS = new Set([1, 10, 20, 46, 76])
+
 function pick<T>(arr: T[], i: number): T { return arr[i % arr.length] }
 function rand(min: number, max: number, seed: number): number {
   return Math.round(min + ((seed * 9301 + 49297) % 233280) / 233280 * (max - min))
@@ -125,7 +128,7 @@ function makeProduct(
     img: pick(imgPool, seed),
     tabs,
     hasTimer: seed % 6 === 0,
-    colors: pickMultiple(colors, seed + 2, 1, 4),
+    colors: COLORED_IDS.has(id) ? pickMultiple(colors, seed + 2, 1, 4) : [],
     material: pick(materialPool, seed + 3),
     inStock: seed % 8 !== 0,
     room: category === 'Sofa' ? 'Living Room'

@@ -5,13 +5,15 @@ import { requireAuth, requireAdmin } from '@/lib/auth'
 import { ApiResponse } from '@/lib/response'
 
 export async function POST(req: NextRequest) {
+  const auth = requireAuth(req)
+  if (auth instanceof Response) return auth
   try {
     const body = await req.json()
     const parsed = createOrderSchema.safeParse(body)
     if (!parsed.success) {
       return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
     }
-    const order = await orderService.createOrder(parsed.data)
+    const order = await orderService.createOrder({ ...parsed.data, userId: auth.user.id, email: auth.user.email })
     return ApiResponse.created(order)
   } catch (err: any) {
     console.error('Checkout error:', err)

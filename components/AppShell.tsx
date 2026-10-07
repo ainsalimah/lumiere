@@ -14,20 +14,38 @@ import { useRouter, usePathname } from 'next/navigation'
 interface AppShellProps {
   children: React.ReactNode
   showChrome?: boolean
+  currentPage?: Page
 }
 
 /**
  * AppShell — provides Navbar, Footer, CartDrawer, and CheckoutModal.
  * Used by pages that need the full chrome layout.
  */
-export default function AppShell({ children, showChrome = true }: AppShellProps) {
+export default function AppShell({ children, showChrome = true, currentPage }: AppShellProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { currentUser, login, logout, updateUser } = useAuth()
-  const { cartItems, cartCount, addToCart, addToCartQty, updateQty, removeItem, clearCart } = useCart()
+  const { cartItems, cartCount, addToCart, addToCartQty, updateQty, removeItem, clearCart, isCartOpen, setIsCartOpen } = useCart()
   const { wishlist } = useWishlist()
-  const [cartOpen, setCartOpen] = useState(false)
   const [cartPageOpen, setCartPageOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+
+  const activePage: Page = currentPage || (() => {
+    if (!pathname || pathname === '/') return 'home'
+    if (pathname.startsWith('/shop')) return 'shop'
+    if (pathname.startsWith('/categories')) return 'categories'
+    if (pathname.startsWith('/about')) return 'about'
+    if (pathname.startsWith('/contact')) return 'contact'
+    if (pathname.startsWith('/account')) return 'account'
+    if (pathname.startsWith('/wishlist')) return 'wishlist'
+    if (pathname.startsWith('/cart')) return 'cart'
+    if (pathname.startsWith('/admin')) return 'admin'
+    if (pathname.startsWith('/login')) return 'login'
+    if (pathname.startsWith('/register')) return 'register'
+    if (pathname.startsWith('/forgot-password')) return 'forgot-password'
+    if (pathname.startsWith('/reset-password')) return 'reset-password'
+    return 'home'
+  })()
 
   const navigate = (page: Page, _preFilter?: ShopPreFilter) => {
     const routes: Record<Page, string> = {
@@ -38,11 +56,15 @@ export default function AppShell({ children, showChrome = true }: AppShellProps)
       contact: '/contact',
       account: '/account',
       wishlist: '/wishlist',
+      cart: '/cart',
       admin: '/admin',
       login: '/login',
       register: '/register',
       'forgot-password': '/forgot-password',
       'reset-password': '/reset-password',
+    }
+    if (page === 'shop' && _preFilter) {
+      sessionStorage.setItem('shopPreFilter', JSON.stringify(_preFilter))
     }
     router.push(routes[page] || '/')
   }
@@ -57,14 +79,16 @@ export default function AppShell({ children, showChrome = true }: AppShellProps)
     <div className="min-h-screen flex flex-col" style={{ fontFamily: 'var(--font-sans)' }}>
       {showChrome && (
         <Navbar
-          currentPage={'home' as Page}
+          currentPage={activePage}
           navigate={navigate}
           cartCount={cartCount}
           wishlistCount={wishlist.size}
-          onCartOpen={() => setCartOpen(true)}
+          onCartOpen={() => navigate('cart')}
           currentUser={currentUser}
           onLogout={() => { logout(); router.push('/') }}
-          openProduct={(_p: Product) => {}}
+          openProduct={(_p: Product) => {
+            router.push(`/products/${_p.id}`)
+          }}
         />
       )}
 
@@ -75,13 +99,13 @@ export default function AppShell({ children, showChrome = true }: AppShellProps)
       {showChrome && <Footer navigate={navigate} />}
 
       <CartDrawer
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
+        open={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
         items={cartItems}
         onUpdateQty={updateQty}
         onRemove={removeItem}
         onCheckout={() => {
-          setCartOpen(false)
+          setIsCartOpen(false)
           if (!currentUser) router.push('/login')
           else setCheckoutOpen(true)
         }}

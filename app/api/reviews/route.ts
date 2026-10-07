@@ -14,6 +14,9 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Invalid input')
 
     const { productId, orderId, authorName, rating, title, body: reviewBody } = parsed.data
+    const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } })
+    if (!order || order.userId !== authResult.user.id || order.status !== 'Delivered' || !order.items.some(item => item.productId === productId)) return ApiResponse.forbidden('Ulasan hanya untuk produk pada pesanan milikmu yang sudah selesai.')
+    const user = await prisma.user.findUnique({ where: { id: authResult.user.id }, select: { name: true } })
 
     const review = await (prisma as any).review.upsert({
       where: { productId_orderId: { productId: Number(productId), orderId } },
@@ -21,12 +24,12 @@ export async function POST(req: NextRequest) {
         rating: Number(rating),
         title: title || '',
         body: reviewBody || '',
-        authorName: authorName || authResult.user.email || 'Anonymous',
+        authorName: user?.name || 'Pelanggan',
       },
       create: {
         productId: Number(productId),
         orderId,
-        authorName: authorName || authResult.user.email || 'Anonymous',
+        authorName: user?.name || 'Pelanggan',
         rating: Number(rating),
         title: title || '',
         body: reviewBody || '',

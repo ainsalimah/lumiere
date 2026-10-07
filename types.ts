@@ -9,6 +9,7 @@ export interface Product {
   name: string
   category: ProductCategory
   subcategory: string
+  description?: string | null
   price: number
   originalPrice: number
   discount: number
@@ -62,6 +63,8 @@ export interface Order {
   id: string
   customer: string
   email?: string
+  phone?: string
+  createdAt?: string
   address: string
   total: number
   status: OrderStatus
