@@ -41,4 +41,7 @@ export class ApiResponse {
   static serverError(error = 'Internal server error.') {
     return ApiResponse.json({ error }, 500)
   }
+  static conflict(error: string) {
+    return ApiResponse.json({ error }, 409)
+  }
 }

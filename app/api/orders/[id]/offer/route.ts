@@ -14,6 +14,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!parsed.success) return ApiResponse.badRequest(parsed.error.issues[0]?.message || 'Data penawaran tidak valid.')
     return ApiResponse.ok(await orderService.createOffer((await params).id, parsed.data))
   } catch (error: any) {
+    if (error.status === 409) return ApiResponse.conflict(error.message)
     if (error.status === 404) return ApiResponse.notFound(error.message)
     if (error.status === 400) return ApiResponse.badRequest(error.message)
     return ApiResponse.serverError('Penawaran belum dapat disimpan.')

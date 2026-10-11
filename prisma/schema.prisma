@@ -58,6 +58,14 @@ model Order {
   offerDelivery String?
   offerNote     String?
   offerSentAt   DateTime?
+  version       Int         @default(0)
+  recipientPhone String?
+  offerAcceptedAt DateTime?
+  paymentAmount Int @default(0)
+  paymentRecordedAt DateTime?
+  paymentRecordedBy Int?
+  paymentNote String?
+  events        OrderEvent[]
   date          DateTime    @default(now())
   items         OrderItem[]
 }
@@ -70,6 +78,21 @@ model OrderItem {
   productId Int
   qty       Int
   color     String
+  productName String?
+  productImage String?
+  unitPrice Int?
+  originalPrice Int?
+  discount Int?
+}
+
+model OrderEvent {
+  id Int @id @default(autoincrement())
+  orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status String
+  action String
+  occurredAt DateTime @default(now())
+  @@index([orderId, occurredAt])
 }
 
 model Review {

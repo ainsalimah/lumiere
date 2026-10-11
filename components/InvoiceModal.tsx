@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Dialog from './Dialog'
 import { ORDER_LABELS } from '@/lib/store'
 
 interface InvoiceModalProps {
@@ -38,7 +39,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
     iframeDoc.write(`
       <html>
         <head>
-          <title>Invoice ${order.id}</title>
+          <title>Ringkasan pesanan</title>
           ${styleHtml}
           <style>
             @media print {
@@ -65,9 +66,8 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <Dialog title={`Ringkasan pesanan ${order.id}`} onClose={onClose} wide>
       {/* Backdrop (hidden when printing) */}
-      <div className="absolute inset-0 bg-stone-950/60 backdrop-blur-sm print:hidden" onClick={onClose} />
 
       {/* Modal Container */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto print:max-h-none print:shadow-none print:w-full print:absolute print:inset-0 print:p-0">
@@ -87,6 +87,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
               Print / Save PDF
             </button>
             <button
+              aria-label="Tutup ringkasan pesanan"
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
             >
@@ -99,7 +100,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
 
         {/* Invoice Content (This is what gets printed) */}
         <div id="printable-invoice" className="p-4 sm:p-8 md:p-10 bg-white">
-          <div className="flex items-start justify-between mb-12">
+          <div className="flex flex-col sm:flex-row gap-5 items-start justify-between mb-12">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 bg-stone-900 rounded-sm flex items-center justify-center print:-mt-1">
@@ -114,12 +115,12 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
             </div>
             <div className="text-right">
               <h1 className="text-3xl font-bold text-stone-900 mb-2 uppercase tracking-widest" style={{ fontFamily: 'var(--font-display)' }}>Invoice</h1>
-              <p className="text-stone-500 text-sm font-mono mb-1">{order.id}</p>
+              <p className="text-stone-500 text-sm font-mono mb-1 break-all">{order.id}</p>
               <p className="text-stone-400 text-xs">Date: {order.date}</p>
             </div>
           </div>
 
-          <div className="flex justify-between mb-10 pb-8 border-b border-stone-100">
+          <div className="flex flex-col sm:flex-row gap-5 justify-between mb-10 pb-8 border-b border-stone-100">
             <div>
               <p className="text-xs uppercase tracking-widest text-stone-400 font-semibold mb-2">Billed To</p>
               <p className="text-stone-900 font-medium text-sm mb-1">{order.customer || 'Customer Name'}</p>
@@ -131,7 +132,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
               <p className="text-xs uppercase tracking-widest text-stone-400 font-semibold mb-2">Payment Info</p>
               <p className="text-stone-900 font-medium text-sm mb-1">{order.method || 'Konfirmasi pemilik'}</p>
               <p className="text-stone-500 text-xs">Status: <span className="font-semibold text-stone-700">{ORDER_LABELS[order.status] || order.status}</span></p>
-              <p className="text-xs text-stone-700 mt-2">Ringkasan pesanan ini bukan bukti pembayaran. Ongkir dikonfirmasi pemilik.</p>
+              <p className="text-xs text-stone-700 mt-2">Ringkasan ini bukan kuitansi bank atau bukti transaksi otomatis. {order.paymentAmount > 0 ? `Pemilik mencatat penerimaan Rp ${order.paymentAmount.toLocaleString('id-ID')}.` : 'Pembayaran belum tercatat.'}</p>
             </div>
           </div>
 
@@ -143,7 +144,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {(order.items || order.itemDetails || []).map((item: any, i: number) => {
+              {(Array.isArray(order.items) ? order.items : order.itemDetails || []).map((item: any, i: number) => {
                 const itemName = item.product?.name || item.productName || item.name || 'Furniture Item'
                 const itemColor = item.color || item.selectedColor || 'Default'
                 const itemQty = item.qty || 1
@@ -154,7 +155,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
                       <p className="text-stone-900 font-medium text-sm">{itemName}</p>
                       <p className="text-stone-400 text-xs mt-0.5">Color: {itemColor}</p>
                     </td>
-                    <td className="py-4 text-stone-600 text-sm text-center">{itemQty}</td>
+                    <td className="py-4 text-stone-600 text-sm text-center">{itemQty}<p className="text-xs mt-1">{item.unitPrice != null ? `Rp ${(item.unitPrice * itemQty).toLocaleString('id-ID')}` : 'Harga satuan lama tidak tercatat'}</p></td>
                   </tr>
                 )
               })}
@@ -169,12 +170,13 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
               </div>
               <div className="flex justify-between text-sm text-stone-600 pb-3 border-b border-stone-200">
                 <span>Ongkir</span>
-                <span>Dikonfirmasi pemilik</span>
+                <span>{order.offerShipping != null ? `Rp ${order.offerShipping.toLocaleString('id-ID')}` : 'Belum dikonfirmasi'}</span>
               </div>
               <div className="flex justify-between font-bold text-lg text-stone-900 pt-1">
-                <span>Nilai barang</span>
-                <span>Rp {order.total.toLocaleString('id-ID')}</span>
+                <span>{order.offerSentAt ? 'Total penawaran' : 'Nilai barang'}</span>
+                <span>Rp {(order.total + (order.offerShipping || 0)).toLocaleString('id-ID')}</span>
               </div>
+              {order.offerDelivery && <p className="text-xs text-stone-600">Estimasi: {order.offerDelivery}</p>}
             </div>
           </div>
           
@@ -184,7 +186,7 @@ export default function InvoiceModal({ open, onClose, order }: InvoiceModalProps
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   )
 }
 

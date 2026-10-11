@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { AuthUser, Page } from '@/types'
 import TrackOrderModal from '@/components/TrackOrderModal'
 import ReviewModal from '@/components/ReviewModal'
@@ -39,7 +39,6 @@ function PersonalTab({ user, onUpdateUser }: { user: AuthUser | null; onUpdateUs
   const [name, setName]     = useState(user?.name ?? '')
   const [email]             = useState(user?.email ?? '')
   const [phone, setPhone]   = useState(user?.phone ?? '')
-  const [gender, setGender] = useState('Prefer not to say')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState('')
@@ -84,12 +83,7 @@ function PersonalTab({ user, onUpdateUser }: { user: AuthUser | null; onUpdateUs
           <div className="w-20 h-20 rounded-full bg-warm-400 flex items-center justify-center text-white text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
             {initials || '?'}
           </div>
-          <button className="absolute bottom-0 right-0 w-6 h-6 bg-stone-900 rounded-full flex items-center justify-center text-white hover:bg-stone-700 transition-colors">
-            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
+
         </div>
         <div>
           <p className="text-stone-900 font-semibold">{name}</p>
@@ -99,30 +93,20 @@ function PersonalTab({ user, onUpdateUser }: { user: AuthUser | null; onUpdateUs
 
       <form onSubmit={handleSave} className="space-y-5 max-w-xl">
         <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Full Name *</label>
-          <input value={name} onChange={e => setName(e.target.value)}
+          <label htmlFor="profile-name" className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Full Name *</label>
+          <input id="profile-name" autoComplete="name" value={name} onChange={e => setName(e.target.value)}
             className="w-full border border-stone-200 text-stone-900 text-sm px-4 py-3 rounded-lg focus:outline-none focus:border-stone-500 bg-stone-50" />
         </div>
         <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Email</label>
-          <input type="email" value={email} disabled
+          <label htmlFor="profile-email" className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Email</label>
+          <input id="profile-email" type="email" value={email} disabled
             className="w-full border border-stone-200 text-stone-400 text-sm px-4 py-3 rounded-lg bg-stone-100 cursor-not-allowed" />
           <p className="text-xs text-stone-400 mt-1">Email address cannot be changed.</p>
         </div>
         <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Phone</label>
-          <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+62 812 3456 7890"
+          <label htmlFor="profile-phone" className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Phone</label>
+          <input id="profile-phone" autoComplete="tel" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+62 812 3456 7890"
             className="w-full border border-stone-200 text-stone-900 text-sm px-4 py-3 rounded-lg focus:outline-none focus:border-stone-500 bg-stone-50" />
-        </div>
-        <div>
-          <label className="block text-xs tracking-widest uppercase text-stone-500 mb-1.5">Gender</label>
-          <select value={gender} onChange={e => setGender(e.target.value)}
-            className="w-full border border-stone-200 text-stone-900 text-sm px-4 py-3 rounded-lg focus:outline-none focus:border-stone-500 bg-stone-50">
-            <option>Prefer not to say</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>Other</option>
-          </select>
         </div>
         {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>}
         <button type="submit" disabled={saving}
@@ -147,22 +131,33 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
   const [cancelling, setCancelling]       = useState(false)
   const [respondingOffer, setRespondingOffer] = useState<string | null>(null)
 
-  const fetchOrders = () => {
+  const [loadError, setLoadError] = useState('')
+  const requestRef = useRef<AbortController | null>(null)
+  const fetchOrders = useCallback(async (quiet = false) => {
     if (!currentUser?.id) return
-    const token = localStorage.getItem('lumiere_token') || ''
-    setLoading(true)
-    fetch(`/api/users/${currentUser.id}/orders`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => setOrders(Array.isArray(data) ? data : []))
-      .catch(() => setOrders([]))
-      .finally(() => setLoading(false))
-  }
+    requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    if (!quiet) setLoading(true)
+    try {
+      const res = await fetch(`/api/users/${currentUser.id}/orders`, { signal: controller.signal, cache: 'no-store', headers: { Authorization: `Bearer ${localStorage.getItem('lumiere_token') || ''}` } })
+      const data = await res.json()
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.error || 'Pesanan belum dapat dimuat. Coba lagi.')
+      setOrders(data)
+      setLoadError('')
+    } catch (error) {
+      if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : 'Pesanan belum dapat dimuat.')
+    } finally { if (!controller.signal.aborted) setLoading(false) }
+  }, [currentUser?.id])
 
   useEffect(() => {
+    setOrders([])
     fetchOrders()
-  }, [currentUser])
+    const refresh = () => { if (document.visibilityState === 'visible') fetchOrders(true) }
+    window.addEventListener('focus', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => { requestRef.current?.abort(); window.clearInterval(timer); window.removeEventListener('focus', refresh) }
+  }, [fetchOrders])
 
   const handleCancelOrder = async () => {
     if (!cancelTarget) return
@@ -176,7 +171,7 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to cancel order')
 
-      setOrders(prev => prev.map(o => o.id === cancelTarget.id ? { ...o, status: 'Cancelled' } : o))
+      setOrders(prev => prev.map(o => o.id === cancelTarget.id ? data : o))
       toast.success('Order has been cancelled successfully.')
       setCancelTarget(null)
     } catch (err: any) {
@@ -190,10 +185,10 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
     setRespondingOffer(order.id)
     try {
       const token = localStorage.getItem('lumiere_token') || ''
-      const res = await fetch(`/api/orders/${encodeURIComponent(order.id)}/offer-response`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ accept }) })
+      const res = await fetch(`/api/orders/${encodeURIComponent(order.id)}/offer-response`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ accept, expectedVersion: order.version }) })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Respons penawaran belum tersimpan.')
-      setOrders(prev => prev.map(item => item.id === order.id ? { ...item, status: accept ? 'Processing' : 'Cancelled' } : item))
+      if (!res.ok) { if (res.status === 409) await fetchOrders(true); throw new Error(data.error || 'Respons penawaran belum tersimpan.') }
+      setOrders(prev => prev.map(item => item.id === order.id ? data : item))
       toast.success(accept ? 'Penawaran disetujui. Pesanan akan segera diproses.' : 'Penawaran ditolak. Pesanan dibatalkan.')
     } catch (error: any) { toast.error(error.message || 'Respons penawaran belum tersimpan.') }
     finally { setRespondingOffer(null) }
@@ -203,7 +198,7 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-8">
         <h2 className="text-stone-900 text-2xl" style={{ fontFamily: 'var(--font-display)' }}>
           My Orders {!loading && `(${filtered.length})`}
         </h2>
@@ -221,12 +216,14 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
         </div>
       </div>
 
+      <div className="mb-4"><button className="store-button secondary" disabled={loading} onClick={() => fetchOrders()}>Muat ulang pesanan</button>{loadError && <p className="notice error mt-3" role="alert">{loadError}</p>}</div>
       <TrackOrderModal
         open={!!trackingOrder}
         onClose={() => setTrackingOrder(null)}
         orderId={trackingOrder?.id ?? ''}
         activeStep={trackingOrder?.status === 'Delivered' ? 4 : trackingOrder?.status === 'On the Way' ? 3 : trackingOrder?.status === 'Processing' ? 2 : trackingOrder?.status === 'Accepted' ? 1 : 0}
-        placedDate={trackingOrder?.date ?? ''}
+        events={trackingOrder?.events ?? []}
+        placedDate={trackingOrder?.createdAt ?? ''}
         items={(trackingOrder?.items ?? []).map(({ product, qty, color }: any) => ({
           img: product?.img || '', name: product?.name || 'Product', color, qty,
         }))}
@@ -285,7 +282,7 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
           <OrderCardSkeleton />
           <OrderCardSkeleton />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : loadError && orders.length === 0 ? <p className="text-stone-600">Data belum tersedia. Gunakan tombol muat ulang.</p> : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
             <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="text-stone-400">
@@ -303,7 +300,7 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 bg-warm-400/20 border-b border-warm-400/30 px-4 sm:px-5 py-3 sm:py-4">
                 <div>
                   <p className="text-stone-500 text-xs mb-0.5">Order ID</p>
-                  <p className="text-stone-900 font-semibold text-sm">{order.id}</p>
+                  <p className="text-stone-900 font-semibold text-sm break-all">{order.id}</p>
                 </div>
                 <div>
                   <p className="text-stone-600 text-xs mb-0.5">Nilai barang</p>
@@ -314,7 +311,7 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
                   <p className="text-stone-900 font-semibold text-sm">{order.method}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500 text-xs mb-0.5">{order.status === 'Delivered' ? 'Date Received' : 'Order Date'}</p>
+                  <p className="text-stone-500 text-xs mb-0.5">{'Tanggal permintaan'}</p>
                   <p className="text-stone-900 font-semibold text-sm">{order.date}</p>
                 </div>
               </div>
@@ -322,12 +319,12 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
               {/* Items */}
                <div className="divide-y divide-stone-100">
                 {order.items.map(({ product, qty, color }: any, idx: number) => (
-                  <div key={product?.id || idx} className="flex items-center gap-4 px-5 py-3">
+                  <div key={`${product?.id}-${color}-${idx}`} className="flex items-center gap-4 px-5 py-3">
                     <div className="w-12 h-12 bg-stone-100 rounded-lg overflow-hidden flex-shrink-0">
                       <img src={product?.img || ''} alt={product?.name || 'Product'} className="w-full h-full object-cover" />
                </div>
 
-               {order.status === 'Accepted' && order.offerSentAt && <div className="mx-4 sm:mx-5 my-4 rounded-xl border border-[#ded3c5] bg-[#f0eae3] p-4"><p className="text-xs font-semibold tracking-wide text-[#765037]">PENAWARAN PEMILIK</p><div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm"><span>Ongkir: <strong>Rp {(order.offerShipping || 0).toLocaleString('id-ID')}</strong></span><span>Estimasi: <strong>{order.offerDelivery}</strong></span></div>{order.offerNote && <p className="mt-2 text-sm leading-6 text-[#7d7168]">{order.offerNote}</p>}<p className="mt-3 text-xs text-[#7d7168]">Total penawaran: <strong className="text-[#2c2824]">Rp {(order.total + (order.offerShipping || 0)).toLocaleString('id-ID')}</strong></p><div className="mt-4 flex flex-wrap gap-2"><button disabled={respondingOffer === order.id} onClick={() => respondToOffer(order, true)} className="store-button min-h-10 px-4 text-xs">{respondingOffer === order.id ? 'Menyimpan…' : 'Setujui penawaran'}</button><button disabled={respondingOffer === order.id} onClick={() => respondToOffer(order, false)} className="store-button secondary min-h-10 px-4 text-xs">Tolak</button></div></div>}
+
                     <div>
                       <p className="text-stone-900 text-sm font-medium">{product?.name || 'Product'}</p>
                       <p className="text-stone-400 text-xs">Color: {color} | Qty: {qty}</p>
@@ -336,6 +333,8 @@ function OrdersTab({ currentUser }: { currentUser: AuthUser | null }) {
                 ))}
               </div>
 
+               {order.offerSentAt && <div className="mx-4 sm:mx-5 my-4 rounded-xl border border-[#ded3c5] bg-[#f0eae3] p-4"><p className="text-xs font-semibold tracking-wide text-[#765037]">PENAWARAN PEMILIK</p><div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm"><span>Ongkir: <strong>Rp {(order.offerShipping || 0).toLocaleString('id-ID')}</strong></span><span>Estimasi: <strong>{order.offerDelivery}</strong></span></div>{order.offerNote && <p className="mt-2 text-sm leading-6 text-[#7d7168]">{order.offerNote}</p>}<p className="mt-3 text-xs text-[#7d7168]">Total penawaran: <strong className="text-[#2c2824]">Rp {(order.total + (order.offerShipping || 0)).toLocaleString('id-ID')}</strong></p>{order.status === 'Accepted' && <div className="mt-4 flex flex-wrap gap-2"><button disabled={respondingOffer === order.id} onClick={() => respondToOffer(order, true)} className="store-button min-h-10 px-4 text-xs">{respondingOffer === order.id ? 'Menyimpan…' : 'Setujui penawaran'}</button><button disabled={respondingOffer === order.id} onClick={() => respondToOffer(order, false)} className="store-button secondary min-h-10 px-4 text-xs">Tolak</button></div>}</div>}
+              {(order.paymentAmount || 0) > 0 && <p className="mx-5 mb-4 text-sm text-stone-700">Pemilik mencatat pembayaran Rp {order.paymentAmount.toLocaleString('id-ID')} melalui {order.method}, {new Date(order.paymentRecordedAt).toLocaleString('id-ID')}.</p>}
               {/* Footer */}
               <div className="px-4 sm:px-5 py-3 sm:py-4 border-t border-stone-100 flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
@@ -499,7 +498,7 @@ function AddressTab({ user }: { user: AuthUser | null }) {
           })
           if (!res.ok) throw new Error('Gagal memperbarui alamat.')
           const updated = await res.json()
-          setAddresses(prev => prev.map(a => a.id === editingId ? updated : a))
+          setAddresses(prev => prev.map(a => a.id === editingId ? updated : { ...a, isDefault: updated.isDefault ? false : a.isDefault }))
           resetForm()
         } else {
           const res = await fetch(`/api/users/${userId}/addresses`, {
@@ -509,7 +508,7 @@ function AddressTab({ user }: { user: AuthUser | null }) {
           })
           if (!res.ok) throw new Error('Gagal menyimpan alamat.')
           const created = await res.json()
-          setAddresses(prev => [created, ...prev])
+          setAddresses(prev => [created, ...prev.map(a => ({ ...a, isDefault: created.isDefault ? false : a.isDefault }))])
           resetForm()
         }
       } catch (err: any) {
@@ -561,11 +560,16 @@ function AddressTab({ user }: { user: AuthUser | null }) {
     if (userId) {
       try {
         const token = localStorage.getItem('lumiere_token') || ''
-        await fetch(`/api/users/${userId}/addresses/${id}`, {
+        const response = await fetch(`/api/users/${userId}/addresses/${id}`,  {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         })
-      } catch {}
+        if (!response.ok) throw new Error('Alamat belum dapat dihapus.')
+        const refreshed = await fetch(`/api/users/${userId}/addresses`, { headers: { Authorization: `Bearer ${token}` } })
+        if (!refreshed.ok) throw new Error('Alamat telah dihapus tetapi daftar belum dapat dimuat ulang.')
+        setAddresses(await refreshed.json())
+        return
+      } catch (err) { setError(err instanceof Error ? err.message : 'Alamat belum dapat dihapus.'); return }
     }
     const remaining = addresses.filter(a => a.id !== id)
     setAddresses(remaining)
@@ -576,12 +580,13 @@ function AddressTab({ user }: { user: AuthUser | null }) {
     if (userId) {
       try {
         const token = localStorage.getItem('lumiere_token') || ''
-        await fetch(`/api/users/${userId}/addresses/${id}`, {
+        const response = await fetch(`/api/users/${userId}/addresses/${id}`,  {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ isDefault: true })
         })
-      } catch {}
+        if (!response.ok) throw new Error('Alamat utama belum dapat disimpan.')
+      } catch (err) { setError(err instanceof Error ? err.message : 'Alamat utama belum dapat disimpan.'); return }
     }
     const updated = addresses.map(a => ({ ...a, isDefault: a.id === id }))
     setAddresses(updated)

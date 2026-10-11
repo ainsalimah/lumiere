@@ -119,6 +119,10 @@
 *.lib                filter=lfs diff=lfs merge=lfs -text
 *.wasm               filter=lfs diff=lfs merge=lfs -text
 
+# Vercel does not download Git LFS objects during builds. Keep browser assets in
+# the regular Git checkout so everything under public/ is deployed as a real file.
+/public/** -filter -diff -merge -text
+
 # ---------------------------------------------------------------------------
 # Build Artifacts & Packages
 # ---------------------------------------------------------------------------

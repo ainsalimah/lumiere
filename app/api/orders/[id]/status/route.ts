@@ -25,6 +25,7 @@ export async function PUT(
     return ApiResponse.ok(updated)
   } catch (err: any) {
     if (err.status === 400) return ApiResponse.badRequest(err.message)
+    if (err.status === 409) return ApiResponse.conflict(err.message)
     if (err.status === 404) return ApiResponse.notFound(err.message)
     console.error('Failed to update order status:', err)
     return ApiResponse.serverError('Failed to update order status.')

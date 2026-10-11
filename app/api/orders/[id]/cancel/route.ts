@@ -14,11 +14,12 @@ export async function PUT(
   const { user } = authResult
 
   try {
-    await orderService.cancelOrder(orderId, user.id, user.isAdmin)
-    return ApiResponse.ok({ message: 'Order cancelled successfully.' })
+    const updated = await orderService.cancelOrder(orderId, user.id, user.isAdmin)
+    return ApiResponse.ok(updated)
   } catch (err: any) {
     console.error('Failed to cancel order:', err)
     const status = err.status || 500
+    if (status === 409) return ApiResponse.conflict(err.message)
     if (status === 404) return ApiResponse.notFound(err.message)
     if (status === 403) return ApiResponse.forbidden(err.message)
     if (status === 400) return ApiResponse.badRequest(err.message)

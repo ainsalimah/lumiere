@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { SALT_ROUNDS } from '@/lib/auth'
@@ -58,59 +59,50 @@ export class UserService {
   }
 
   async getAddresses(userId: number) {
-    return (prisma as any).address.findMany({
+    return prisma.address.findMany({
       where: { userId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     })
   }
 
+  private async withAddresses<T>(userId: number, action: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return prisma.$transaction(async tx => {
+      // Serialize default-address changes for this customer only.
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+      return action(tx)
+    })
+  }
+
   async createAddress(userId: number, data: AddressDTO) {
-    if (data.isDefault) {
-      await (prisma as any).address.updateMany({
-        where: { userId, isDefault: true },
-        data: { isDefault: false },
-      })
-    }
-
-    const count = await (prisma as any).address.count({ where: { userId } })
-    const isDefault = data.isDefault || count === 0
-
-    return (prisma as any).address.create({
-      data: {
-        userId,
-        name: data.name.trim(),
-        phone: data.phone.trim(),
-        street: data.street.trim(),
-        city: data.city.trim(),
-        zip: data.zip.trim(),
-        country: data.country ?? 'Indonesia',
-        isDefault,
-      },
+    return this.withAddresses(userId, async tx => {
+      const count = await tx.address.count({ where: { userId } })
+      const isDefault = !!data.isDefault || count === 0
+      if (isDefault) await tx.address.updateMany({ where: { userId, isDefault: true }, data: { isDefault: false } })
+      return tx.address.create({ data: { ...data, userId, name: data.name.trim(), phone: data.phone.trim(), street: data.street.trim(), city: data.city.trim(), zip: data.zip.trim(), country: data.country ?? 'Indonesia', isDefault } })
     })
   }
 
   async updateAddress(userId: number, addressId: number, data: Partial<AddressDTO>) {
-    if (data.isDefault) {
-      await (prisma as any).address.updateMany({
-        where: { userId, isDefault: true },
-        data: { isDefault: false },
-      })
-    }
-
-    const patch: Record<string, unknown> = {}
-    if (data.name !== undefined) patch.name = data.name.trim()
-    if (data.phone !== undefined) patch.phone = data.phone.trim()
-    if (data.street !== undefined) patch.street = data.street.trim()
-    if (data.city !== undefined) patch.city = data.city.trim()
-    if (data.zip !== undefined) patch.zip = data.zip.trim()
-    if (data.country !== undefined) patch.country = data.country
-    if (data.isDefault !== undefined) patch.isDefault = data.isDefault
-
-    return (prisma as any).address.update({ where: { id: addressId }, data: patch })
+    return this.withAddresses(userId, async tx => {
+      const address = await tx.address.findFirst({ where: { id: addressId, userId } })
+      if (!address) throw Object.assign(new Error('Alamat tidak ditemukan.'), { status: 404 })
+      if (data.isDefault) await tx.address.updateMany({ where: { userId, isDefault: true }, data: { isDefault: false } })
+      // A default remains selected until another address replaces it.
+      const patch = { ...data, isDefault: data.isDefault || address.isDefault }
+      return tx.address.update({ where: { id: addressId, userId }, data: patch })
+    })
   }
 
-  async deleteAddress(addressId: number): Promise<void> {
-    await (prisma as any).address.delete({ where: { id: addressId } })
+  async deleteAddress(userId: number, addressId: number): Promise<void> {
+    await this.withAddresses(userId, async tx => {
+      const address = await tx.address.findFirst({ where: { id: addressId, userId } })
+      if (!address) throw Object.assign(new Error('Alamat tidak ditemukan.'), { status: 404 })
+      await tx.address.delete({ where: { id: addressId, userId } })
+      if (address.isDefault) {
+        const next = await tx.address.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } })
+        if (next) await tx.address.update({ where: { id: next.id, userId }, data: { isDefault: true } })
+      }
+    })
   }
 }
 

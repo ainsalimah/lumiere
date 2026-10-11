@@ -23,9 +23,16 @@ const prisma = {
   },
   order: {
     create: async ({ data }) => { database.created = data; return data; },
-    findUnique: async () => database.order,
+    findUnique: async () => ({ ...database.order }),
+    findUniqueOrThrow: async () => ({ date: new Date(), items: [], events: [], ...database.order }),
+    updateMany: async ({where, data}) => {
+      if (where.version !== database.order.version || where.status !== database.order.status) return { count: 0 };
+      Object.assign(database.order, data, { version: database.order.version + 1 }); return { count: 1 };
+    },
     update: async ({ data }) => Object.assign(database.order, data),
   },
+  $transaction: async callback => callback(prisma),
+  orderEvent: { create: async () => ({}) },
   orderItem: { count: async () => 0 },
   user: { update: async () => ({}), findUnique: async () => null },
 };
@@ -86,15 +93,19 @@ test('orders use catalog prices and accept multiple color variants of the same p
   assert.equal(database.created.total, Math.round(product.originalPrice * .9) * 3);
   assert.equal(database.created.paymentMethod, 'Konfirmasi pemilik');
   assert.equal(database.created.status, 'Accepted');
-  assert.match(database.created.address, /081234567890/);
+  assert.equal(database.created.recipientPhone, '081234567890');
+  assert.equal(database.created.items.create[0].unitPrice, Math.round(product.originalPrice * .9));
   await assert.rejects(new OrderService().createOrder({ ...data, items: [{ productId: 1, qty: 1, color: 'Invalid' }] }), /warna/);
   database.products[0].inStock = false;
   await assert.rejects(new OrderService().createOrder(data), /out of stock/);
 });
 test('orders cannot skip confirmation or change after completion', async () => {
-  const service = new OrderService(); database.order = { id: 'test', status: 'Accepted' };
+  const service = new OrderService(); database.order = { id: 'test', status: 'Accepted', version: 0, userId: 3 };
   await assert.rejects(service.updateStatus('test', 'Delivered'), /alur pesanan/);
-  await service.updateStatus('test', 'Processing'); await service.updateStatus('test', 'On the Way'); await service.updateStatus('test', 'Delivered');
+  await assert.rejects(service.updateStatus('test', 'Processing'), /alur pesanan/);
+  const offer = await service.createOffer('test', { shipping: 10000, delivery: '3 hari kerja' });
+  await assert.rejects(service.respondToOffer('test', 3, true, 0), e => e.status === 409);
+  await service.respondToOffer('test', 3, true, offer.version); await service.updateStatus('test', 'On the Way'); await service.updateStatus('test', 'Delivered');
   await assert.rejects(service.updateStatus('test', 'Cancelled'), /alur pesanan/);
 });
 test('HTTP routes reject anonymous orders and customer attempts to write the catalog', async () => {

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useState, ReactNode } from 'react'
 import type { Product, CartItem } from '@/types'
 import { LOCAL_STORAGE_KEYS, FREE_SHIPPING_THRESHOLD, SHIPPING_COST, DEFAULT_PRODUCT_COLOR } from '@/constants'
+import { ProductsContext, ProductsStatusContext } from '@/context'
 import { useToast } from '@/context/ToastContext'
 
 type CartAction =
@@ -11,11 +12,14 @@ type CartAction =
   | { type: 'REMOVE_ITEM'; id: number; color: string }
   | { type: 'CLEAR' }
   | { type: 'HYDRATE'; items: CartItem[] }
+  | { type: 'SYNC'; products: Product[] }
 
 function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
   switch (action.type) {
+    case 'SYNC':
+      return state.map(item => ({ ...item, product: action.products.find(p => p.id === item.product.id) || { ...item.product, inStock: false } }))
     case 'HYDRATE':
-      return action.items
+      return action.items.filter(i => i?.product && Number.isInteger(i.product.id) && Number.isFinite(i.qty) && i.qty > 0 && typeof i.selectedColor === 'string').map(i => ({ ...i, qty: Math.min(99, Math.trunc(i.qty)) }))
     case 'ADD_ITEM': {
       const existing = state.find(
         i => i.product.id === action.product.id && i.selectedColor === action.color
@@ -23,18 +27,18 @@ function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
       if (existing) {
         return state.map(i =>
           i.product.id === action.product.id && i.selectedColor === action.color
-            ? { ...i, qty: i.qty + action.qty }
+            ? { ...i, qty: Math.min(99, i.qty + action.qty) }
             : i
         )
       }
-      return [...state, { product: action.product, qty: action.qty, selectedColor: action.color }]
+      return [...state, { product: action.product, qty: Math.max(1, Math.min(99, Math.trunc(action.qty) || 1)), selectedColor: action.color }]
     }
     case 'UPDATE_QTY': {
       if (action.qty <= 0) {
         return state.filter(i => !(i.product.id === action.id && i.selectedColor === action.color))
       }
       return state.map(i =>
-        i.product.id === action.id && i.selectedColor === action.color ? { ...i, qty: action.qty } : i
+        i.product.id === action.id && i.selectedColor === action.color ? { ...i, qty: Math.max(1, Math.min(99, Math.trunc(action.qty) || 1)) } : i
       )
     }
     case 'REMOVE_ITEM':
@@ -70,6 +74,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const toast = useToast()
+  const products = useContext(ProductsContext)
+  const productStatus = useContext(ProductsStatusContext)
+  useEffect(() => {
+    if (isHydrated && !productStatus.loading && !productStatus.error) dispatch({ type: 'SYNC', products })
+  }, [products, productStatus.loading, productStatus.error, isHydrated])
 
   // Hydrate from localStorage after mount
   useEffect(() => {

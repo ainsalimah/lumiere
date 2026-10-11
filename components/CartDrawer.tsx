@@ -1,4 +1,5 @@
 'use client'
+import { useEffect, useRef } from 'react'
 
 import type { CartItem } from '@/types'
 
@@ -12,25 +13,26 @@ interface CartDrawerProps {
 }
 
 export default function CartDrawer({ open, onClose, items, onUpdateQty, onRemove, onCheckout }: CartDrawerProps) {
+  const drawerRef = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const drawer = drawerRef.current
+    const previous = document.activeElement as HTMLElement | null
+    const overflow = document.body.style.overflow
+    drawer?.showModal()
+    document.body.style.overflow = 'hidden'
+    return () => { drawer?.close(); document.body.style.overflow = overflow; previous?.focus() }
+  }, [open])
   const subtotal = items.reduce((sum, i) => sum + i.product.price * i.qty, 0)
   const total = subtotal
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        className={`fixed inset-0 z-50 bg-stone-950/40 backdrop-blur-sm transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-stone-50 z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
-      >
+      <dialog ref={drawerRef} aria-labelledby="cart-drawer-title" onCancel={e => { e.preventDefault(); onClose() }} onClick={e => { if (e.target === e.currentTarget) { const rect = e.currentTarget.getBoundingClientRect(); if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) onClose() } }} className="cart-drawer fixed inset-y-0 left-auto right-0 m-0 h-full max-h-none w-full max-w-md border-0 p-0 bg-stone-50 shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-stone-200">
           <div>
-            <h2 className="text-stone-900 text-xl" style={{ fontFamily: 'var(--font-display)' }}>Keranjang Belanja</h2>
+            <h2 id="cart-drawer-title" className="text-stone-900 text-xl" style={{ fontFamily: 'var(--font-display)' }}>Keranjang Belanja</h2>
             <p className="text-stone-400 text-xs mt-0.5">{items.reduce((s, i) => s + i.qty, 0)} item</p>
           </div>
           <button onClick={onClose} aria-label="Tutup keranjang" className="text-stone-400 hover:text-stone-900 transition-colors p-1 cursor-pointer">
@@ -133,7 +135,7 @@ export default function CartDrawer({ open, onClose, items, onUpdateQty, onRemove
             </button>
           </div>
         )}
-      </div>
+      </dialog>
     </>
   )
 }

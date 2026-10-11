@@ -8,10 +8,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const auth = requireAuth(req)
   if (auth instanceof Response) return auth
   try {
-    const parsed = z.object({ accept: z.boolean() }).safeParse(await req.json())
+    const parsed = z.object({ accept: z.boolean(), expectedVersion: z.number().int().nonnegative() }).safeParse(await req.json())
     if (!parsed.success) return ApiResponse.badRequest('Respons penawaran tidak valid.')
-    return ApiResponse.ok(await orderService.respondToOffer((await params).id, auth.user.id, parsed.data.accept))
+    return ApiResponse.ok(await orderService.respondToOffer((await params).id, auth.user.id, parsed.data.accept, parsed.data.expectedVersion))
   } catch (error: any) {
+    if (error.status === 409) return ApiResponse.conflict(error.message)
     if (error.status === 403) return ApiResponse.forbidden(error.message)
     if (error.status === 404) return ApiResponse.notFound(error.message)
     if (error.status === 400) return ApiResponse.badRequest(error.message)

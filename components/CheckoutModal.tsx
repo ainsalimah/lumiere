@@ -32,7 +32,7 @@ export default function CheckoutModal({ open, onClose, items, onOrderComplete, u
     setLoading(true)
     try {
       const data = await apiClient.orders.create({ customerName: form.name.trim(), email: user.email, phone: form.phone.trim(), address: `${form.address.trim()}, ${form.city.trim()}, ${form.zip.trim()}`, total: subtotal, paymentMethod: PAYMENT_METHOD, items: items.map(item => ({ productId: item.product.id, qty: item.qty, color: item.selectedColor })) })
-      setResult({ id: data.id, total: data.total }); setCurrentUser({ ...user, phone: form.phone.trim() })
+      setResult({ id: data.id, total: data.total })
     } catch (e) { setError(e instanceof Error ? e.message : 'Pesanan belum terkirim. Coba lagi.') }
     finally { setLoading(false) }
   }
