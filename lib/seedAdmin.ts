@@ -21,7 +21,7 @@ const DEMO_REVIEWS = [
  * Called once on first API request via a module-level singleton guard.
  */
 export async function seedAdmin(): Promise<void> {
-  if (process.env.NODE_ENV === 'production') return
+  if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEMO_SEED !== 'true') return
   if (!process.env.DATABASE_URL) return
   if (seeded) return
   seeded = true
@@ -58,7 +58,7 @@ export async function seedAdmin(): Promise<void> {
 
 /** Adds a few sample reviews locally without affecting production data. */
 export async function seedDemoReviews(): Promise<void> {
-  if (process.env.NODE_ENV === 'production' || !process.env.DATABASE_URL || reviewsSeeded) return
+  if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEMO_SEED !== 'true' || !process.env.DATABASE_URL || reviewsSeeded) return
   reviewsSeeded = true
 
   try {

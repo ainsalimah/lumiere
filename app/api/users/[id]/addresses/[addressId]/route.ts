@@ -14,7 +14,7 @@ export async function PUT(
   const { id, addressId } = await params
   const userId = Number(id)
   const addrId = Number(addressId)
-  if (isNaN(userId) || isNaN(addrId)) return ApiResponse.badRequest('Invalid ID')
+  if (!Number.isSafeInteger(userId) || userId < 1 || !Number.isSafeInteger(addrId) || addrId < 1) return ApiResponse.badRequest('Invalid ID')
 
   if (!authResult.user.isAdmin && authResult.user.id !== userId) {
     return ApiResponse.forbidden('You are not authorized to update this address.')
@@ -29,6 +29,7 @@ export async function PUT(
     const updated = await userService.updateAddress(userId, addrId, parsed.data)
     return ApiResponse.ok(updated)
   } catch (err: any) {
+    if (err.status === 404) return ApiResponse.notFound(err.message)
     console.error('Failed to update address:', err)
     return ApiResponse.serverError('Failed to update address')
   }
@@ -44,16 +45,17 @@ export async function DELETE(
   const { id, addressId } = await params
   const userId = Number(id)
   const addrId = Number(addressId)
-  if (isNaN(userId) || isNaN(addrId)) return ApiResponse.badRequest('Invalid ID')
+  if (!Number.isSafeInteger(userId) || userId < 1 || !Number.isSafeInteger(addrId) || addrId < 1) return ApiResponse.badRequest('Invalid ID')
 
   if (!authResult.user.isAdmin && authResult.user.id !== userId) {
     return ApiResponse.forbidden('You are not authorized to delete this address.')
   }
 
   try {
-    await userService.deleteAddress(addrId)
+    await userService.deleteAddress(userId, addrId)
     return ApiResponse.ok({ success: true, message: 'Address deleted successfully.' })
   } catch (err: any) {
+    if (err.status === 404) return ApiResponse.notFound(err.message)
     console.error('Failed to delete address:', err)
     return ApiResponse.serverError('Failed to delete address')
   }

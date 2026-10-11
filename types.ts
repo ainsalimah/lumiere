@@ -53,6 +53,7 @@ export type OrderStatus =
 export type PaymentMethod = 'Bank Transfer' | 'COD' | 'E-Wallet'
 
 export interface OrderItem {
+  unitPrice?: number | null
   productName: string
   qty: number
   color: string
@@ -72,6 +73,12 @@ export interface Order {
   method: string
   items: number
   itemDetails?: OrderItem[]
+  version?: number
+  events?: Array<{ status: string; action: string; occurredAt: string }>
+  offerAcceptedAt?: string | null
+  paymentAmount?: number
+  paymentRecordedAt?: string | null
+  paymentNote?: string | null
   offerShipping?: number | null
   offerDelivery?: string | null
   offerNote?: string | null

@@ -31,17 +31,13 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
       <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <ProductsContext.Provider value={globalProducts}>
-              <ProductsStatusContext.Provider value={status}>
-              <ProductsRefreshContext.Provider value={refreshProducts}>
-                {children}
-              </ProductsRefreshContext.Provider>
-              </ProductsStatusContext.Provider>
-            </ProductsContext.Provider>
-          </WishlistProvider>
-        </CartProvider>
+        <ProductsContext.Provider value={globalProducts}>
+          <ProductsStatusContext.Provider value={status}>
+            <ProductsRefreshContext.Provider value={refreshProducts}>
+              <CartProvider><WishlistProvider>{children}</WishlistProvider></CartProvider>
+            </ProductsRefreshContext.Provider>
+          </ProductsStatusContext.Provider>
+        </ProductsContext.Provider>
       </AuthProvider>
     </ToastProvider>
   )

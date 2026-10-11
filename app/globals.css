@@ -116,3 +116,8 @@ button:not(:disabled) { cursor: pointer; }
 @media (min-width: 768px) { .store-container { width: min(100% - 80px, 1240px); } }
 @media (max-width: 640px) { .dialog-body, .dialog-header { padding: 20px; } .dialog-actions { padding: 16px 20px; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+.cart-drawer:not([open]) { display: none; }
+.cart-drawer::backdrop { background: rgba(26,23,20,.45); backdrop-filter: blur(4px); }
+.cart-drawer[open] { animation: cart-drawer-enter .25s ease-out; }
+@keyframes cart-drawer-enter { from { transform: translateX(100%); } to { transform: translateX(0); } }

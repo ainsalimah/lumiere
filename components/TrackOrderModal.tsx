@@ -1,4 +1,5 @@
 'use client'
+import Dialog from './Dialog'
 
 interface TrackItem {
   img: string
@@ -13,12 +14,13 @@ interface TrackOrderModalProps {
   orderId: string
   activeStep: number // 0=Placed, 1=Accepted, 2=InProgress, 3=OnTheWay, 4=Delivered
   items: TrackItem[]
+  events?: Array<{status: string; action: string; occurredAt: string}>
   placedDate: string
 }
 
 const STEPS = [
   {
-    label: 'Pesanan dikirim',
+    label: 'Permintaan dibuat',
     icon: (
       <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.4" viewBox="0 0 24 24">
         <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
@@ -68,32 +70,11 @@ const STEPS = [
   },
 ]
 
-function stepDate(placedDate: string, step: number, activeStep: number): string {
-  // parse "12 August 2026" style dates
-  const base = new Date(placedDate)
-  if (isNaN(base.getTime())) {
-    // fallback
-    const now = new Date()
-    base.setTime(now.getTime())
-  }
-  const offsets = [0, 0, 1, 2, 4] // days after placed
-  const d = new Date(base)
-  d.setDate(d.getDate() + offsets[step])
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  const label = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
-
-  if (step === 0) return `${label}\n11:00 AM`
-  if (step === 1 && activeStep >= 1) return `${label}\n11:15 AM`
-  if (step <= activeStep) return label
-  return `Expected\n${label}`
-}
-
-export default function TrackOrderModal({ open, onClose, orderId, activeStep, items, placedDate }: TrackOrderModalProps) {
+export default function TrackOrderModal({ open, onClose, orderId, activeStep, items, placedDate, events = [] }: TrackOrderModalProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-stone-950/60 backdrop-blur-sm" onClick={onClose} />
+    <Dialog title={`Riwayat pesanan ${orderId}`} onClose={onClose} wide>
 
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
@@ -116,6 +97,7 @@ export default function TrackOrderModal({ open, onClose, orderId, activeStep, it
         </div>
 
         <div className="px-4 sm:px-7 py-5 sm:py-6 space-y-6">
+          {events.length > 0 && <ol className="space-y-2" aria-label="Riwayat perubahan">{events.map((event, index) => <li key={index} className="text-sm text-stone-700">{event.action} - {new Date(event.occurredAt).toLocaleString('id-ID')}</li>)}</ol>}
           {/* ── Progress tracker ── */}
           <div className="bg-stone-50 border border-stone-100 rounded-xl px-4 sm:px-6 py-5 sm:py-7 overflow-x-auto">
             <div className="relative flex items-start justify-between min-w-[460px] sm:min-w-0">
@@ -130,7 +112,10 @@ export default function TrackOrderModal({ open, onClose, orderId, activeStep, it
 
               {STEPS.map((step, i) => {
                 const done = i <= activeStep
-                const dateStr = stepDate(placedDate, i, activeStep)
+                const status = ['Accepted', 'Accepted', 'Processing', 'On the Way', 'Delivered'][i]
+                const event = events.find(e => e.status === status)
+                const rawDate = event?.occurredAt || (i === 0 ? placedDate : '')
+                const dateStr = rawDate ? new Date(rawDate).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : done ? 'Waktu tidak tercatat' : 'Belum terjadi'
                 const [dateLine, timeLine] = dateStr.split('\n')
                 return (
                   <div key={step.label} className="relative z-10 flex flex-col items-center flex-1">
@@ -183,7 +168,7 @@ export default function TrackOrderModal({ open, onClose, orderId, activeStep, it
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   )
 }
 
